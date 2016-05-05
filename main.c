@@ -1,4 +1,3 @@
-
 #include <libpic30.h>
 #include <p30F4012.h>
 
@@ -48,7 +47,7 @@ unsigned int g_mesure_courant_moy=0;
 
 signed long  g_Erreur_P=0,g_Erreur_I=0;
 
-unsigned char g_mode = MODE_STOP, g_mode_mem = MODE_OPEN;       //Initialisation du Mode (Mode_mem différent pour lancer l'init du mode Stop)
+unsigned char g_mode = MODE_STOP, g_mode_mem = MODE_OPEN;       //Initialisation du Mode (Mode_mem diffÃ©rent pour lancer l'init du mode Stop)
 
 signed long g_motor_pos = 0;
 signed long g_vitesse_desiree = 0;
@@ -76,11 +75,11 @@ signed long g_motor_conf_vitesse_max=111;
 
 
 
-//Variables partagées info fonctionnement moteur
+//Variables partagÃ©es info fonctionnement moteur
 u16_shared_var u16CurrentValue;
-//Variables partagées info fonctionnement moteur
-//Variables partagées parametres PID
-//Variables partagées parametres Moteur
+//Variables partagÃ©es info fonctionnement moteur
+//Variables partagÃ©es parametres PID
+//Variables partagÃ©es parametres Moteur
 
 int main()
 {
@@ -91,7 +90,7 @@ int main()
     
     InitFonctionRecep();
     
-//Récupération des parametres dans l'eeprom    
+//RÃ©cupÃ©ration des parametres dans l'eeprom    
     WriteSharedVarU16_APP(&u16CurrentValue,0);
     
     g_timeMesureSpeed=10;
@@ -175,17 +174,17 @@ void Configure_pins()
     LATF = 0;
     TRISF = 0xFFFB;
 
-//      Config & Réglage Timer1 à 1khz
+//      Config & RÃ©glage Timer1 Ã  1khz
     ConfigIntTimer1(T1_INT_PRIOR_5 & T1_INT_ON);
     WriteTimer1(0);
     OpenTimer1( T1_ON & T1_IDLE_STOP & T1_GATE_OFF & T1_PS_1_1 & T1_SYNC_EXT_OFF & T1_SOURCE_INT , PR_T1 );
 
-//      Config & Réglage Timer2 à 10khz
+//      Config & RÃ©glage Timer2 Ã  10khz
     ConfigIntTimer2(T2_INT_PRIOR_3 & T2_INT_ON);
     WriteTimer2(0);
     OpenTimer2( T2_ON & T2_IDLE_STOP & T2_GATE_OFF & T2_PS_1_1 & T2_SOURCE_INT , PR_T2 );
 
-//      Config & Réglage Timer4 à 10hz
+//      Config & RÃ©glage Timer4 Ã  10hz
     ConfigIntTimer4(T4_INT_PRIOR_1 & T4_INT_ON);
     WriteTimer4(0);
     OpenTimer4( T4_ON & T4_IDLE_STOP & T4_GATE_OFF & T4_PS_1_256 & T4_SOURCE_INT , PR_T4 );
@@ -848,7 +847,7 @@ void Gestion_LED(unsigned int freq)
 
 void Gestion_Courant(void)
 {
-    if((g_stateAcq==0) && (g_timer_AcqCourant>=20))     //cadencé à 100us
+    if((g_stateAcq==0) && (g_timer_AcqCourant>=20))     //cadencÃ© Ã  100us
     {
         g_timer_AcqCourant=0;
         SetChanADC10(ADC_CSOUT);      // Select the requested channel
@@ -869,11 +868,11 @@ void Gestion_Courant(void)
     }
     else if((g_stateAcq==0) && (g_nb_mes_courant>=5))
     {
-        // Somme des mesures de courant effectué diviser par le nb de mesures
+        // Somme des mesures de courant effectuÃ© diviser par le nb de mesures
         g_mesure_courant /= (unsigned long)g_nb_mes_courant;
         // Transfert dans la variable d'envoi
 g_mesure_courant_moy += 1;// g_mesure_courant_moy = (unsigned int)g_mesure_courant;  
-        // Reset des variables necessaires à la nouvelles serie d'acquisition
+        // Reset des variables necessaires Ã  la nouvelles serie d'acquisition
         
         DRIVER_MODE=1;
         WriteSharedVarU16_APP(&u16CurrentValue, g_mesure_courant_moy);
@@ -905,11 +904,11 @@ void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void)
         {
             g_motor_pos=(((signed long)g_motor_pos_H)<<15)+((signed long)ReadQEI());        //recup position
             g_motor_vitesse =  (((signed long)g_motor_pos)-((signed long)g_motor_pos_mem));  //Determine le nombre de pas depuis la derniere acquisition
-            g_motor_vitesse *= g_multi_timeMesureSpeed_s;                                         //ramène en pas par seconde
+            g_motor_vitesse *= g_multi_timeMesureSpeed_s;                                         //ramÃ¨ne en pas par seconde
         
             g_Vitesse_Cour=(signed int)(g_motor_vitesse/g_motor_conf_codeur_ppt);                                              //divise par 32 pour que ca entre dans int et le rende transportable  
             
-            g_motor_pos_mem=g_motor_pos;                                                    //Sauvegarde de la valeur à soustraire pour la prochain calcul
+            g_motor_pos_mem=g_motor_pos;                                                    //Sauvegarde de la valeur Ã  soustraire pour la prochain calcul
         }
         else
         {
@@ -928,7 +927,7 @@ void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void)
         if(g_flag_asser==LOOP)
         {
             g_Erreur_P = (g_vitesse_desiree)-g_motor_vitesse;             // Erreur Proportionnelle
-            g_Erreur_I += g_Erreur_P;                                   // Cumul Intégral
+            g_Erreur_I += g_Erreur_P;                                   // Cumul IntÃ©gral
 
             g_dutycycle =  g_Erreur_P*g_nom_Kp/g_denom_Kp;              // Calcul Asservissement Kp
             g_dutycycle += g_Erreur_I*g_nom_Ki/g_denom_Ki;              // Calcul Asservissement Ki
@@ -948,7 +947,7 @@ void __attribute__((interrupt, no_auto_psv)) _T2Interrupt(void)
 {
     WriteTimer2(0);
     _T2IF = 0;
-    //Timer reglé sur 100us
+    //Timer reglÃ© sur 100us
     g_timer_AcqCourant++;
     
 }
@@ -965,7 +964,7 @@ void __attribute__((interrupt, no_auto_psv)) _T4Interrupt(void)
 {
     WriteTimer4(0);
     _T4IF = 0;
-    //Timer reglé sur 100ms
+    //Timer reglÃ© sur 100ms
     g_timer_led++;
 }
 
