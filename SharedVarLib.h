@@ -12,38 +12,32 @@
 #define LOCK    1
 #define UNLOCK  0
 
-typedef struct 
-{
+typedef struct {
     unsigned char mutex;
     unsigned char u8_data[2];
 } u8_shared_var;
 
-typedef struct
-{
+typedef struct {
     unsigned char mutex;
     unsigned int u16_data[2];
 } u16_shared_var;
 
-typedef struct 
-{
+typedef struct {
     unsigned char mutex;
     unsigned long u32_data[2];
 } u32_shared_var;
 
-typedef struct 
-{
+typedef struct {
     unsigned char mutex;
     char u8_data[2];
 } s8_shared_var;
 
-typedef struct 
-{
+typedef struct {
     unsigned char mutex;
     int u16_data[2];
 } s16_shared_var;
 
-typedef struct 
-{
+typedef struct {
     unsigned char mutex;
     long u32_data[2];
 } s32_shared_var;
