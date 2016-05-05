@@ -1,9 +1,3 @@
-/* 
- * File:   Driver_Dspic.h
- * Author: Yann
- *
- * Created on 1 mai 2015, 10:05
- */
 #include <adc10.h>
 
 #ifndef MAIN_H
