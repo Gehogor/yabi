@@ -9,21 +9,21 @@
 #ifndef MAIN_H
 #define	MAIN_H
 
-/**** Paramètres Carte d'axe****/
+/**** ParamÃ¨tres Carte d'axe****/
 #define TYPE_CARD 0x01  //Carte d'axe Moteur Brushless
 //#define TYPE_CARD 0x02  //Carte d'axe Moteur CC
-//#define TYPE_CARD 0x03  //Carte d'axe Moteur Pas à Pas
-//#define TYPE_CARD 0x04  //Carte d'axe Servo moteur modélisme
+//#define TYPE_CARD 0x03  //Carte d'axe Moteur Pas Ã  Pas
+//#define TYPE_CARD 0x04  //Carte d'axe Servo moteur modÃ©lisme
 
 #define CODEUR_OFF  1
 #define CODEUR_ON   0
 
-/**** Paramètres généraux ****/
-#define FREQUENCY   117968000		//Fréquence de fonctionement xPLL16  =>  XTAL=7.373Mhz x16
+/**** ParamÃ¨tres gÃ©nÃ©raux ****/
+#define FREQUENCY   117968000		//FrÃ©quence de fonctionement xPLL16  =>  XTAL=7.373Mhz x16
 #define TOSC_GENE   (1/FREQUENCY)
 #define TCY         0.000000033907      //(TOSC_GENE*4)
 #define FCY         29492000            //(1/TCY) ~30MIPS
-#define BAUD 115200				//Bibliothèque et paramètres pour la liaison RS232
+#define BAUD 115200				//BibliothÃ¨que et paramÃ¨tres pour la liaison RS232
 #define BRG ((FCY / (BAUD * 16))-1)
 
 #define TMRX_PRES_VAL_1     1
@@ -42,7 +42,7 @@
 #define PR_T4   11480       //10Hz
 
 
-/**** Paramètres Outout Compare ****/
+/**** ParamÃ¨tres Outout Compare ****/
 //PWM Period = [(PRy) + 1] x TCY x (TMRy Prescale Value)
 //PWM Frequency = 1/[PWM Period]
 #define PWM_FREQ    20000
@@ -56,7 +56,7 @@
 
 #define PRX_REG     (PWM_PER/(TCY*PWM_PRES_VAL))
 
-/**** Paramètres I/O ****/
+/**** ParamÃ¨tres I/O ****/
 #define DRIVER_MODE     _LATE1
 #define DRIVER_DIR      _LATE2
 #define DRIVER_COAST	_LATE3
@@ -89,7 +89,7 @@
 #define LED_ON  0
 #define LED_OFF 1
 
-/**** Paramètres USART ****/
+/**** ParamÃ¨tres USART ****/
 
 #define ACK_MASTER 0x5E
 #define ACK_SLAVE  0xE5
@@ -126,7 +126,7 @@
 
 #define COM_ERREUR_FUNC_UNCKNOW     0xF6
 
-/**** Machine à état de la carte Yabi ******/
+/**** Machine Ã  Ã©tat de la carte Yabi ******/
 
 #define MODE_STOP      0x00
 #define MODE_OPEN      0x01
@@ -138,7 +138,7 @@
 #define OPEN    0x01
 #define LOOP    0x02
 
-// Déclaration Structures 
+// DÃ©claration Structures 
 typedef struct     //Struct trame de transmission
 {
     unsigned char commande;
