@@ -133,7 +133,8 @@
 #define LOOP    0x02
 
 // Déclaration Structures 
-typedef struct     //Struct trame de transmission
+
+typedef struct //Struct trame de transmission
 {
     unsigned char commande;
     unsigned char data[25];
@@ -155,7 +156,7 @@ void Configure_pins(void);
 void InitFonctionRecep(void);
 void InitDriver(void);
 unsigned int read_analog_channel(int channel);
-void Envoi_Char( unsigned char Octet);
+void Envoi_Char(unsigned char Octet);
 void WriteSPI1_c(unsigned char c);
 void Gestion_RW_Wconsigne(void);
 void Gestion_RW_Wmode(void);
