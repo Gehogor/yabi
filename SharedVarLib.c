@@ -81,3 +81,75 @@ unsigned long int ReadSharedVarU32_SPI(u32_shared_var *pt_u32ShVar) {
     return pt_u32ShVar->u32_data[pt_u32ShVar->mutex];
 }
 
+void WriteSharedVarS8_APP(s8_shared_var *pt_s8ShVar, signed char val){
+    while (pt_s8ShVar->mutex == LOCK);
+    pt_s8ShVar->mutex = LOCK;
+    pt_s8ShVar->s8_data[0] = val;
+    pt_s8ShVar->mutex = UNLOCK;
+    pt_s8ShVar->s8_data[1] = val;
+}
+signed char ReadSharedVarS8_APP(s8_shared_var *pt_s8ShVar){
+    signed char val;
+    while (pt_s8ShVar->mutex == LOCK);
+    pt_s8ShVar->mutex = LOCK;
+    val = pt_s8ShVar->s8_data[0];
+    pt_s8ShVar->mutex = UNLOCK;
+    return val;
+}
+
+void WriteSharedVarS8_SPI(s8_shared_var *pt_s8ShVar, signed char val){
+    pt_s8ShVar->s8_data[pt_s8ShVar->mutex] = val;
+}
+
+signed char ReadSharedVarS8_SPI(s8_shared_var *pt_s8ShVar){
+    return pt_s8ShVar->s8_data[pt_s8ShVar->mutex];
+}
+
+void WriteSharedVarS16_APP(s16_shared_var *pt_s16ShVar, signed int val){
+    while (pt_s16ShVar->mutex == LOCK);
+    pt_s16ShVar->mutex = LOCK;
+    pt_s16ShVar->s16_data[0] = val;
+    pt_s16ShVar->mutex = UNLOCK;
+    pt_s16ShVar->s16_data[1] = val;
+}
+signed int ReadSharedVarS16_APP(s16_shared_var *pt_s16ShVar){
+    signed int val;
+    while (pt_s16ShVar->mutex == LOCK);
+    pt_s16ShVar->mutex = LOCK;
+    val = pt_s16ShVar->s16_data[0];
+    pt_s16ShVar->mutex = UNLOCK;
+    return val;
+}
+
+void WriteSharedVarS16_SPI(s16_shared_var *pt_s16ShVar, signed int val){
+    pt_s16ShVar->s16_data[pt_s16ShVar->mutex] = val;
+}
+
+signed int ReadSharedVarS16_SPI(s16_shared_var *pt_s16ShVar){
+    return pt_s16ShVar->s16_data[pt_s16ShVar->mutex];
+}
+
+void WriteSharedVarS32_APP(s32_shared_var *pt_s32ShVar, signed long int val){
+    while (pt_s32ShVar->mutex == LOCK);
+    pt_s32ShVar->mutex = LOCK;
+    pt_s32ShVar->s32_data[0] = val;
+    pt_s32ShVar->mutex = UNLOCK;
+    pt_s32ShVar->s32_data[1] = val;
+}
+
+signed long int ReadSharedVarS32_APP(s32_shared_var *pt_s32ShVar){
+    signed long int val;
+    while (pt_s32ShVar->mutex == LOCK);
+    pt_s32ShVar->mutex = LOCK;
+    val = pt_s32ShVar->s32_data[0];
+    pt_s32ShVar->mutex = UNLOCK;
+    return val;
+}
+
+void WriteSharedVarS32_SPI(s32_shared_var *pt_s32ShVar, signed long int val){
+    pt_s32ShVar->s32_data[pt_s32ShVar->mutex] = val;
+}
+
+signed long int ReadSharedVarS32_SPI(s32_shared_var *pt_s32ShVar){
+    return pt_s32ShVar->s32_data[pt_s32ShVar->mutex];
+}

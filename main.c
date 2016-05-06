@@ -38,11 +38,8 @@ signed long g_motor_vitesse = 0;
 signed long g_dutycycle = 0;
 signed long g_pulse_drive = 0;
 
-unsigned int g_protect_courant = 0;
 unsigned long g_mesure_courant = 0;
 unsigned char g_stateAcq = 0, g_nb_mes_courant = 0;
-unsigned int g_mesure_courant_moy_SPI = 0;
-unsigned int g_mesure_courant_moy = 0;
 
 signed long g_Erreur_P = 0, g_Erreur_I = 0;
 
@@ -50,8 +47,8 @@ unsigned char g_mode = MODE_STOP, g_mode_mem = MODE_OPEN; //Initialisation du Mo
 
 signed long g_motor_pos = 0;
 signed long g_vitesse_desiree = 0;
-unsigned int g_Vitesse_Cour = 0;
-unsigned int g_Acceleration_Cour = 0;
+signed int g_Vitesse_Cour = 0;
+
 
 unsigned char g_timeMesureSpeed = 0;
 unsigned char g_timeControlLoop = 0;
@@ -73,9 +70,16 @@ unsigned int g_motor_conf_courant_max = 2330;
 signed long g_motor_conf_vitesse_max = 111;
 
 
+unsigned int g_mesure_courant_moy_SPI = 0; 
+unsigned int g_Acceleration_Cour_SPI = 0;
+signed int g_Vitesse_Cour_SPI = 0;
+
 
 //Variables partagées info fonctionnement moteur
 u16_shared_var u16CurrentValue;
+u16_shared_var u16AccelerationCour;
+s16_shared_var s16VitesseCour;
+
 //Variables partagées info fonctionnement moteur
 //Variables partagées parametres PID
 //Variables partagées parametres Moteur
@@ -89,13 +93,12 @@ int main() {
     InitFonctionRecep();
 
     //Récupération des parametres dans l'eeprom    
+    
     WriteSharedVarU16_APP(&u16CurrentValue, 0);
 
     g_timeMesureSpeed = 10;
     g_multi_timeMesureSpeed_s = 1000 / ((unsigned int) g_timeMesureSpeed);
     g_timeControlLoop = g_timeMesureSpeed;
-
-    g_protect_courant = read_analog_channel(ADC_REF);
 
     LED = LED_OFF;
 
@@ -107,23 +110,23 @@ int main() {
         if (g_mode != g_mode_mem) {
             switch (g_mode) {
                 case MODE_STOP:
-                    //                    DRIVER_COAST =0;          //Mise off du Driver
+                    DRIVER_COAST =0;          //Mise off du Driver
                     SetDCOC1PWM(PWM_VAL_CENTRE);
                     g_flag_asser = STOP;
                     g_var_led = LED_FREQ_1HZ;
                     break;
                 case MODE_OPEN:
-                    //                    DRIVER_COAST =1;          //Mise on du Driver
+                    DRIVER_COAST =1;          //Mise on du Driver
                     g_flag_asser = OPEN;
                     g_var_led = LED_FREQ_2HZ;
                     break;
                 case MODE_ASSER:
-                    //                    DRIVER_COAST =1;          //Mise on du Driver
+                    DRIVER_COAST =1;          //Mise on du Driver
                     g_flag_asser = LOOP;
                     g_var_led = LED_FREQ_5HZ;
                     break;
                 default:
-                    //                    DRIVER_COAST =0;          //Mise off du Driver
+                    DRIVER_COAST =0;          //Mise off du Driver
                     g_flag_asser = STOP;
                     g_var_led = LED_FREQ_1HZ;
                     break;
@@ -264,11 +267,6 @@ unsigned int read_analog_channel(int channel) {
     return ReadADC10(0);
 }
 
-void Envoi_Char(unsigned char Octet) {
-    WriteUART1(Octet);
-    while (BusyUART1());
-}
-
 void WriteSPI1_c(unsigned char c) {
     WriteSPI1(c);
     while (SPI1STATbits.SPITBF);
@@ -286,38 +284,28 @@ void Gestion_RW_Wconsigne(void) {
     if (g_SPI_RX_flag == 1) {
         g_vitesse_desiree = (signed long) ((signed int) ((((unsigned int) g_SPI_RX_clearReg) << 8)&0xFF00));
         send_spi1((unsigned char) (g_motor_pos >> 24));
-        //        send_spi1(g_SPI_RX_flag+0x10);
     } else if (g_SPI_RX_flag == 2) {
         g_vitesse_desiree |= (signed long) ((signed int) (((unsigned int) g_SPI_RX_clearReg)&0x00FF));
         send_spi1((unsigned char) (g_motor_pos >> 16));
-        //        send_spi1(g_SPI_RX_flag+0x10);
     } else if (g_SPI_RX_flag == 3) {
         send_spi1((unsigned char) (g_motor_pos >> 8));
-        //        send_spi1(g_SPI_RX_flag+0x10);
     } else if (g_SPI_RX_flag == 4) {
         send_spi1((unsigned char) g_motor_pos);
-        //        send_spi1(g_SPI_RX_flag+0x10);
     } else if (g_SPI_RX_flag == 5) {
-        send_spi1((unsigned char) (g_Vitesse_Cour >> 8));
-        //        send_spi1(g_SPI_RX_flag+0x10);
+        g_Vitesse_Cour_SPI = ReadSharedVarS16_SPI(&s16VitesseCour);
+        send_spi1((unsigned char) (g_Vitesse_Cour_SPI >> 8));
     } else if (g_SPI_RX_flag == 6) {
-        send_spi1((unsigned char) (g_Vitesse_Cour));
-        //        send_spi1(g_SPI_RX_flag+0x10);
+        send_spi1((unsigned char) (g_Vitesse_Cour_SPI));
     } else if (g_SPI_RX_flag == 7) {
-        send_spi1((unsigned char) (g_Acceleration_Cour >> 8));
-        //        send_spi1(g_SPI_RX_flag+0x10);
+        g_Acceleration_Cour_SPI = ReadSharedVarU16_SPI(&u16AccelerationCour);
+        send_spi1((unsigned char) (g_Acceleration_Cour_SPI >> 8));
     } else if (g_SPI_RX_flag == 8) {
-        send_spi1((unsigned char) (g_Acceleration_Cour));
-        //        send_spi1(g_SPI_RX_flag+0x10);
+        send_spi1((unsigned char) (g_Acceleration_Cour_SPI));
     } else if (g_SPI_RX_flag == 9) {
-        DRIVER_COAST = 1;
         g_mesure_courant_moy_SPI = ReadSharedVarU16_SPI(&u16CurrentValue);
-        DRIVER_COAST = 0;
         send_spi1((unsigned char) (g_mesure_courant_moy_SPI >> 8));
-        //        send_spi1(g_SPI_RX_flag+0x10);    
     } else if (g_SPI_RX_flag == 10) {
         send_spi1((unsigned char) (g_mesure_courant_moy_SPI));
-        //        send_spi1(g_SPI_RX_flag+0x10);
     } else if (g_SPI_RX_flag == 11) {
         send_spi1(ACK_SLAVE);
     }
@@ -334,15 +322,12 @@ void Gestion_RW_Wposition(void) {
     if (g_SPI_RX_flag == 1) {
         g_motor_pos = (signed long) ((((unsigned long) g_SPI_RX_clearReg) << 24)&0xFF000000);
         send_spi1(0);
-        //        send_spi1(g_SPI_RX_flag+0x30);
     } else if (g_SPI_RX_flag == 2) {
         g_motor_pos |= (signed long) ((((unsigned long) g_SPI_RX_clearReg) << 16)&0x00FF0000);
         send_spi1(0);
-        //        send_spi1(g_SPI_RX_flag+0x30);
     } else if (g_SPI_RX_flag == 3) {
         g_motor_pos |= (signed long) ((((unsigned long) g_SPI_RX_clearReg) << 8)&0x0000FF00);
         send_spi1(0);
-        //        send_spi1(g_SPI_RX_flag+0x30);
     } else if (g_SPI_RX_flag == 4) {
         g_motor_pos |= (signed long) (((unsigned long) g_SPI_RX_clearReg)&0x000000FF);
         send_spi1(ACK_SLAVE);
@@ -353,72 +338,54 @@ void Gestion_RW_Wconfig(void) {
     if (g_SPI_RX_flag == 1) {
         g_nom_Kp = (unsigned int) ((((unsigned int) g_SPI_RX_clearReg) << 8)&0xFF00);
         send_spi1(0);
-        //        send_spi1(g_SPI_RX_flag+0x40);
     } else if (g_SPI_RX_flag == 2) {
         g_nom_Kp |= (unsigned int) (((unsigned int) g_SPI_RX_clearReg)&0x00FF);
         send_spi1(0);
-        //        send_spi1(g_SPI_RX_flag+0x40);
     } else if (g_SPI_RX_flag == 3) {
         g_denom_Kp = (unsigned int) ((((unsigned int) g_SPI_RX_clearReg) << 8)&0xFF00);
         send_spi1(0);
-        //        send_spi1(g_SPI_RX_flag+0x40);
     } else if (g_SPI_RX_flag == 4) {
         g_denom_Kp |= (unsigned int) (((unsigned int) g_SPI_RX_clearReg)&0x00FF);
         send_spi1(0);
-        //        send_spi1(g_SPI_RX_flag+0x40);
     } else if (g_SPI_RX_flag == 5) {
         g_nom_Ki = (unsigned int) ((((unsigned int) g_SPI_RX_clearReg) << 8)&0xFF00);
         send_spi1(0);
-        //        send_spi1(g_SPI_RX_flag+0x40);
     } else if (g_SPI_RX_flag == 6) {
         g_nom_Ki |= (unsigned int) (((unsigned int) g_SPI_RX_clearReg)&0x00FF);
         send_spi1(0);
-        //        send_spi1(g_SPI_RX_flag+0x40);
     } else if (g_SPI_RX_flag == 7) {
         g_denom_Ki = (unsigned int) ((((unsigned int) g_SPI_RX_clearReg) << 8)&0xFF00);
         send_spi1(0);
-        //        send_spi1(g_SPI_RX_flag+0x40);
     } else if (g_SPI_RX_flag == 8) {
         g_denom_Ki |= (unsigned int) (((unsigned int) g_SPI_RX_clearReg)&0x00FF);
         send_spi1(0);
-        //        send_spi1(g_SPI_RX_flag+0x40);
     } else if (g_SPI_RX_flag == 9) {
         g_nom_Kd = (unsigned int) ((((unsigned int) g_SPI_RX_clearReg) << 8)&0xFF00);
         send_spi1(0);
-        //        send_spi1(g_SPI_RX_flag+0x40);
     } else if (g_SPI_RX_flag == 10) {
         g_nom_Kd |= (unsigned int) (((unsigned int) g_SPI_RX_clearReg)&0x00FF);
         send_spi1(0);
-        //        send_spi1(g_SPI_RX_flag+0x40);
     } else if (g_SPI_RX_flag == 11) {
         g_denom_Kd = (unsigned int) ((((unsigned int) g_SPI_RX_clearReg) << 8)&0xFF00);
         send_spi1(0);
-        //        send_spi1(g_SPI_RX_flag+0x40);
     } else if (g_SPI_RX_flag == 12) {
         g_denom_Kd |= (unsigned int) (((unsigned int) g_SPI_RX_clearReg)&0x00FF);
         send_spi1(0);
-        //        send_spi1(g_SPI_RX_flag+0x40);
-    }
-    if (g_SPI_RX_flag == 13) {
+    } else if (g_SPI_RX_flag == 13) {
         g_erreur_limite_I = (signed long) ((((unsigned long) g_SPI_RX_clearReg) << 24)&0xFF000000);
         send_spi1(0);
-        //        send_spi1(g_SPI_RX_flag+0x40);
     } else if (g_SPI_RX_flag == 14) {
         g_erreur_limite_I |= (signed long) ((((unsigned long) g_SPI_RX_clearReg) << 16)&0x00FF0000);
         send_spi1(0);
-        //        send_spi1(g_SPI_RX_flag+0x40);
     } else if (g_SPI_RX_flag == 15) {
         g_erreur_limite_I |= (signed long) ((((unsigned long) g_SPI_RX_clearReg) << 8)&0x0000FF00);
         send_spi1(0);
-        //        send_spi1(g_SPI_RX_flag+0x40);
     } else if (g_SPI_RX_flag == 16) {
         g_erreur_limite_I |= (signed long) (((unsigned long) g_SPI_RX_clearReg)&0x000000FF);
         send_spi1(0);
-        //        send_spi1(g_SPI_RX_flag+0x40);
     } else if (g_SPI_RX_flag == 17) {
         g_TimeOut_Recep = g_SPI_RX_clearReg;
         send_spi1(0);
-        //        send_spi1(g_SPI_RX_flag+0x40);
     } else if (g_SPI_RX_flag == 18) {
         g_timeMesureSpeed = g_SPI_RX_clearReg;
         send_spi1(ACK_SLAVE);
@@ -430,16 +397,12 @@ void Gestion_RW_Wconfig(void) {
 void Gestion_RW_Rposition(void) {
     if (g_SPI_RX_flag == 1) {
         send_spi1((unsigned char) (g_motor_pos >> 24));
-        //        send_spi1(g_SPI_RX_flag+0x50);
     } else if (g_SPI_RX_flag == 2) {
         send_spi1((unsigned char) (g_motor_pos >> 16));
-        //        send_spi1(g_SPI_RX_flag+0x50);
     } else if (g_SPI_RX_flag == 3) {
         send_spi1((unsigned char) (g_motor_pos >> 8));
-        //        send_spi1(g_SPI_RX_flag+0x50);
     } else if (g_SPI_RX_flag == 4) {
         send_spi1((unsigned char) g_motor_pos);
-        //        send_spi1(g_SPI_RX_flag+0x50);
     } else if (g_SPI_RX_flag == 5) {
         send_spi1(ACK_SLAVE);
     }
@@ -447,11 +410,10 @@ void Gestion_RW_Rposition(void) {
 
 void Gestion_RW_Rvitesse(void) {
     if (g_SPI_RX_flag == 1) {
-        send_spi1((unsigned char) (g_Vitesse_Cour >> 8));
-        //        send_spi1(g_SPI_RX_flag+0x70);
+        g_Vitesse_Cour_SPI = ReadSharedVarS16_SPI(&s16VitesseCour);
+        send_spi1((unsigned char) (g_Vitesse_Cour_SPI >> 8));
     } else if (g_SPI_RX_flag == 2) {
-        send_spi1((unsigned char) g_Vitesse_Cour);
-        //        send_spi1(g_SPI_RX_flag+0x70);
+        send_spi1((unsigned char) g_Vitesse_Cour_SPI);
     } else if (g_SPI_RX_flag == 3) {
         send_spi1(ACK_SLAVE);
     }
@@ -459,11 +421,10 @@ void Gestion_RW_Rvitesse(void) {
 
 void Gestion_RW_Racceleration(void) {
     if (g_SPI_RX_flag == 1) {
-        send_spi1((unsigned char) (g_Acceleration_Cour >> 8));
-        //        send_spi1(g_SPI_RX_flag+0x70);
+        g_Acceleration_Cour_SPI = ReadSharedVarU16_SPI(&u16AccelerationCour);
+        send_spi1((unsigned char) (g_Acceleration_Cour_SPI >> 8));
     } else if (g_SPI_RX_flag == 2) {
-        send_spi1((unsigned char) g_Acceleration_Cour);
-        //        send_spi1(g_SPI_RX_flag+0x70);
+        send_spi1((unsigned char) g_Acceleration_Cour_SPI);
     } else if (g_SPI_RX_flag == 3) {
         send_spi1(ACK_SLAVE);
     }
@@ -471,14 +432,10 @@ void Gestion_RW_Racceleration(void) {
 
 void Gestion_RW_Rcourant(void) {
     if (g_SPI_RX_flag == 1) {
-        DRIVER_COAST = 1;
         g_mesure_courant_moy_SPI = ReadSharedVarU16_SPI(&u16CurrentValue);
-        DRIVER_COAST = 0;
         send_spi1((unsigned char) (g_mesure_courant_moy_SPI >> 8));
-        //        send_spi1(g_SPI_RX_flag+0x70);
     } else if (g_SPI_RX_flag == 2) {
         send_spi1((unsigned char) g_mesure_courant_moy_SPI);
-        //        send_spi1(g_SPI_RX_flag+0x70);
     } else if (g_SPI_RX_flag == 3) {
         send_spi1(ACK_SLAVE);
     }
@@ -493,58 +450,40 @@ void Gestion_RW_Rerreur(void) {
 void Gestion_RW_Rconfig(void) {
     if (g_SPI_RX_flag == 1) {
         send_spi1((unsigned char) (g_nom_Kp >> 8));
-        //        send_spi1(g_SPI_RX_flag+0x90);
     } else if (g_SPI_RX_flag == 2) {
         send_spi1((unsigned char) (g_nom_Kp));
-        //        send_spi1(g_SPI_RX_flag+0x90);
     } else if (g_SPI_RX_flag == 3) {
         send_spi1((unsigned char) (g_denom_Kp >> 8));
-        //        send_spi1(g_SPI_RX_flag+0x90);
     } else if (g_SPI_RX_flag == 4) {
         send_spi1((unsigned char) (g_denom_Kp));
-        //        send_spi1(g_SPI_RX_flag+0x90);
     } else if (g_SPI_RX_flag == 5) {
         send_spi1((unsigned char) (g_nom_Ki >> 8));
-        //        send_spi1(g_SPI_RX_flag+0x90);
     } else if (g_SPI_RX_flag == 6) {
         send_spi1((unsigned char) (g_nom_Ki));
-        //        send_spi1(g_SPI_RX_flag+0x90);
     } else if (g_SPI_RX_flag == 7) {
         send_spi1((unsigned char) (g_denom_Ki >> 8));
-        //        send_spi1(g_SPI_RX_flag+0x90);
     } else if (g_SPI_RX_flag == 8) {
         send_spi1((unsigned char) (g_denom_Ki));
-        //        send_spi1(g_SPI_RX_flag+0x90);
     } else if (g_SPI_RX_flag == 9) {
         send_spi1((unsigned char) (g_nom_Kd >> 8));
-        //        send_spi1(g_SPI_RX_flag+0x90);
     } else if (g_SPI_RX_flag == 10) {
         send_spi1((unsigned char) (g_nom_Kd));
-        //        send_spi1(g_SPI_RX_flag+0x90);
     } else if (g_SPI_RX_flag == 11) {
         send_spi1((unsigned char) (g_denom_Kd >> 8));
-        //        send_spi1(g_SPI_RX_flag+0x90);
     } else if (g_SPI_RX_flag == 12) {
         send_spi1((unsigned char) (g_denom_Kd));
-        //        send_spi1(g_SPI_RX_flag+0x90);
     } else if (g_SPI_RX_flag == 13) {
         send_spi1((unsigned char) (g_erreur_limite_I >> 24));
-        //        send_spi1(g_SPI_RX_flag+0x90);
     } else if (g_SPI_RX_flag == 14) {
         send_spi1((unsigned char) (g_erreur_limite_I >> 16));
-        //        send_spi1(g_SPI_RX_flag+0x90);
     } else if (g_SPI_RX_flag == 15) {
         send_spi1((unsigned char) (g_erreur_limite_I >> 8));
-        //        send_spi1(g_SPI_RX_flag+0x90);
     } else if (g_SPI_RX_flag == 16) {
         send_spi1((unsigned char) (g_erreur_limite_I));
-        //        send_spi1(g_SPI_RX_flag+0x90);
     } else if (g_SPI_RX_flag == 17) {
         send_spi1((unsigned char) (g_TimeOut_Recep));
-        //        send_spi1(g_SPI_RX_flag+0x90);
     } else if (g_SPI_RX_flag == 18) {
         send_spi1((unsigned char) (g_timeMesureSpeed));
-        //        send_spi1(g_SPI_RX_flag+0x90);
     } else if (g_SPI_RX_flag == 19) {
         send_spi1(ACK_SLAVE);
     }
@@ -570,80 +509,62 @@ void Gestion_RW_Wmot_conf(void) {
     if (g_SPI_RX_flag == 1) {
         g_motor_conf_vitesse_max = (signed long) ((((unsigned long) g_SPI_RX_clearReg) << 24)&0xFF000000);
         send_spi1(0);
-        //        send_spi1(g_SPI_RX_flag+0x30);
     } else if (g_SPI_RX_flag == 2) {
         g_motor_conf_vitesse_max |= (signed long) ((((unsigned long) g_SPI_RX_clearReg) << 16)&0x00FF0000);
         send_spi1(0);
-        //        send_spi1(g_SPI_RX_flag+0x30);
     } else if (g_SPI_RX_flag == 3) {
         g_motor_conf_vitesse_max |= (signed long) ((((unsigned long) g_SPI_RX_clearReg) << 8)&0x0000FF00);
         send_spi1(0);
-        //        send_spi1(g_SPI_RX_flag+0x30);
     } else if (g_SPI_RX_flag == 4) {
         g_motor_conf_vitesse_max |= (signed long) (((unsigned long) g_SPI_RX_clearReg)&0x000000FF);
         send_spi1(0);
-        //        send_spi1(g_SPI_RX_flag+0x30);
     } else if (g_SPI_RX_flag == 5) {
         g_motor_conf_courant_max = (unsigned int) ((((unsigned int) g_SPI_RX_clearReg) << 8)&0xFF00);
         send_spi1(0);
-        //        send_spi1(g_SPI_RX_flag+0x40);
     } else if (g_SPI_RX_flag == 6) {
         g_motor_conf_courant_max |= (unsigned int) (((unsigned int) g_SPI_RX_clearReg)&0x00FF);
         send_spi1(0);
-        //        send_spi1(g_SPI_RX_flag+0x40);
     }
     if (g_SPI_RX_flag == 7) {
         g_motor_conf_codeur_ppt = (signed long) ((((unsigned long) g_SPI_RX_clearReg) << 24)&0xFF000000);
         send_spi1(0);
-        //        send_spi1(g_SPI_RX_flag+0x30);
     } else if (g_SPI_RX_flag == 8) {
         g_motor_conf_codeur_ppt |= (signed long) ((((unsigned long) g_SPI_RX_clearReg) << 16)&0x00FF0000);
         send_spi1(0);
-        //        send_spi1(g_SPI_RX_flag+0x30);
     } else if (g_SPI_RX_flag == 9) {
         g_motor_conf_codeur_ppt |= (signed long) ((((unsigned long) g_SPI_RX_clearReg) << 8)&0x0000FF00);
         send_spi1(0);
-        //        send_spi1(g_SPI_RX_flag+0x30);
     } else if (g_SPI_RX_flag == 10) {
         g_motor_conf_codeur_ppt |= (signed long) (((unsigned long) g_SPI_RX_clearReg)&0x000000FF);
         send_spi1(ACK_SLAVE);
-        //        send_spi1(g_SPI_RX_flag+0x30);
     }
 }
 
 void Gestion_RW_Rmot_conf(void) {
     if (g_SPI_RX_flag == 1) {
         send_spi1((unsigned char) (g_motor_conf_vitesse_max >> 24));
-        //        send_spi1(g_SPI_RX_flag+0x50);
     } else if (g_SPI_RX_flag == 2) {
         send_spi1((unsigned char) (g_motor_conf_vitesse_max >> 16));
-        //        send_spi1(g_SPI_RX_flag+0x50);
     } else if (g_SPI_RX_flag == 3) {
         send_spi1((unsigned char) (g_motor_conf_vitesse_max >> 8));
-        //        send_spi1(g_SPI_RX_flag+0x50);
     } else if (g_SPI_RX_flag == 4) {
         send_spi1((unsigned char) g_motor_conf_vitesse_max);
-        //        send_spi1(g_SPI_RX_flag+0x50);
     } else if (g_SPI_RX_flag == 5) {
         send_spi1((unsigned char) (g_motor_conf_courant_max >> 8));
-        //        send_spi1(g_SPI_RX_flag+0x90);
     } else if (g_SPI_RX_flag == 6) {
         send_spi1((unsigned char) (g_motor_conf_courant_max));
-        //        send_spi1(g_SPI_RX_flag+0x90);
     } else if (g_SPI_RX_flag == 7) {
         send_spi1((unsigned char) (g_motor_conf_codeur_ppt >> 24));
-        //        send_spi1(g_SPI_RX_flag+0x90);
     } else if (g_SPI_RX_flag == 8) {
         send_spi1((unsigned char) (g_motor_conf_codeur_ppt >> 16));
-        //        send_spi1(g_SPI_RX_flag+0x90);
     } else if (g_SPI_RX_flag == 9) {
         send_spi1((unsigned char) (g_motor_conf_codeur_ppt >> 8));
-        //        send_spi1(g_SPI_RX_flag+0x90);
     } else if (g_SPI_RX_flag == 10) {
         send_spi1((unsigned char) (g_motor_conf_codeur_ppt));
-        if (g_motor_conf_codeur_ppt == 0)g_interface_mesure_vitesse = CODEUR_OFF;
-        else g_interface_mesure_vitesse = CODEUR_ON;
-        //        send_spi1(g_SPI_RX_flag+0x90);
+        if (g_motor_conf_codeur_ppt == 0)
+            g_interface_mesure_vitesse = CODEUR_OFF;
+        else 
+            g_interface_mesure_vitesse = CODEUR_ON;
     } else if (g_SPI_RX_flag == 11) {
         send_spi1(ACK_SLAVE);
     }
@@ -676,13 +597,8 @@ void Gestion_Courant(void) {
     } else if ((g_stateAcq == 0) && (g_nb_mes_courant >= 5)) {
         // Somme des mesures de courant effectué diviser par le nb de mesures
         g_mesure_courant /= (unsigned long) g_nb_mes_courant;
-        // Transfert dans la variable d'envoi
-        g_mesure_courant_moy += 1; // g_mesure_courant_moy = (unsigned int)g_mesure_courant;  
         // Reset des variables necessaires à la nouvelles serie d'acquisition
-
-        DRIVER_MODE = 1;
-        WriteSharedVarU16_APP(&u16CurrentValue, g_mesure_courant_moy);
-        DRIVER_MODE = 0;
+        WriteSharedVarU16_APP(&u16CurrentValue, (unsigned int)g_mesure_courant);
         g_mesure_courant = 0;
         g_nb_mes_courant = 0;
     }
@@ -719,6 +635,7 @@ void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void) {
 
             g_Vitesse_Cour = (signed int) (g_motor_vitesse / 24); //RPS    driver = 24 pulses / tr
         }
+        WriteSharedVarS16_APP(&s16VitesseCour, g_Vitesse_Cour);
     }
 
     if (g_timerControl >= g_timeControlLoop) {
@@ -748,13 +665,6 @@ void __attribute__((interrupt, no_auto_psv)) _T2Interrupt(void) {
     g_timer_AcqCourant++;
 
 }
-
-// Timer 3 interrupt service routine
-//void __attribute__((interrupt, no_auto_psv)) _T3Interrupt(void)
-//{
-//    WriteTimer3(0);
-//    _T3IF = 0;
-//}
 
 // Timer 4 interrupt service routine
 
