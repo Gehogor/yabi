@@ -9,8 +9,8 @@
 //#define TYPE_CARD 0x03  //Carte d'axe Moteur Pas à Pas
 //#define TYPE_CARD 0x04  //Carte d'axe Servo moteur modélisme
 
-#define CODEUR_OFF  1
-#define CODEUR_ON   0
+#define IV_CODEUR  1
+#define IV_TACHY   0
 
 /**** Paramètres généraux ****/
 #define FREQUENCY   117968000		//Fréquence de fonctionement xPLL16  =>  XTAL=7.373Mhz x16
@@ -113,8 +113,8 @@
 #define DATA_R_ERREUR        1
 #define DATA_R_CONFIG        19
 #define DATA_R_ID_BOARD      6
-#define DATA_W_MOT_CONF      10
-#define DATA_R_MOT_CONF      11
+#define DATA_W_MOT_CONF      7
+#define DATA_R_MOT_CONF      8
 
 #define NB_FONCTION          13
 

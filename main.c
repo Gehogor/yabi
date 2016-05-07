@@ -24,7 +24,6 @@ unsigned int g_timerControl = 0;
 unsigned int g_multi_timeMesureSpeed_s = 0;
 unsigned char g_flag_asser = OPEN;
 unsigned char g_var_led = LED_FREQ_5HZ;
-unsigned char g_interface_mesure_vitesse = CODEUR_OFF;
 
 trame_SPI g_SPI_RX_trame;
 unsigned char g_SPI_RX_flag = 0, g_SPI_RX_trame_valide = 0, g_SPI_RX_clearReg = 0;
@@ -65,12 +64,13 @@ unsigned int g_denom_Kd = 1;
 
 signed long g_erreur_limite_I = 0;
 
-signed long g_motor_conf_codeur_ppt = 0;
-unsigned int g_motor_conf_courant_max = 2330;
-signed long g_motor_conf_vitesse_max = 111;
+unsigned char g_interface_mesure_vitesse_SPI = IV_TACHY;
+signed int g_motor_conf_codeur_ppt_SPI = 0;
+unsigned int g_motor_conf_courant_max_SPI = 2330;
+signed int g_motor_conf_vitesse_max_SPI = 111;
 
 
-unsigned int g_mesure_courant_moy_SPI = 0; 
+unsigned int g_mesure_courant_moy_SPI = 0;
 unsigned int g_Acceleration_Cour_SPI = 0;
 signed int g_Vitesse_Cour_SPI = 0;
 
@@ -93,7 +93,7 @@ int main() {
     InitFonctionRecep();
 
     //Récupération des parametres dans l'eeprom    
-    
+
     WriteSharedVarU16_APP(&u16CurrentValue, 0);
 
     g_timeMesureSpeed = 10;
@@ -110,23 +110,23 @@ int main() {
         if (g_mode != g_mode_mem) {
             switch (g_mode) {
                 case MODE_STOP:
-                    DRIVER_COAST =0;          //Mise off du Driver
+                    DRIVER_COAST = 0; //Mise off du Driver
                     SetDCOC1PWM(PWM_VAL_CENTRE);
                     g_flag_asser = STOP;
                     g_var_led = LED_FREQ_1HZ;
                     break;
                 case MODE_OPEN:
-                    DRIVER_COAST =1;          //Mise on du Driver
+                    DRIVER_COAST = 1; //Mise on du Driver
                     g_flag_asser = OPEN;
                     g_var_led = LED_FREQ_2HZ;
                     break;
                 case MODE_ASSER:
-                    DRIVER_COAST =1;          //Mise on du Driver
+                    DRIVER_COAST = 1; //Mise on du Driver
                     g_flag_asser = LOOP;
                     g_var_led = LED_FREQ_5HZ;
                     break;
                 default:
-                    DRIVER_COAST =0;          //Mise off du Driver
+                    DRIVER_COAST = 0; //Mise off du Driver
                     g_flag_asser = STOP;
                     g_var_led = LED_FREQ_1HZ;
                     break;
@@ -507,65 +507,45 @@ void Gestion_RW_Rid(void) {
 
 void Gestion_RW_Wmot_conf(void) {
     if (g_SPI_RX_flag == 1) {
-        g_motor_conf_vitesse_max = (signed long) ((((unsigned long) g_SPI_RX_clearReg) << 24)&0xFF000000);
+        g_interface_mesure_vitesse_SPI = g_SPI_RX_clearReg;
         send_spi1(0);
     } else if (g_SPI_RX_flag == 2) {
-        g_motor_conf_vitesse_max |= (signed long) ((((unsigned long) g_SPI_RX_clearReg) << 16)&0x00FF0000);
+        g_motor_conf_codeur_ppt_SPI = (signed int) ((((unsigned int) g_SPI_RX_clearReg) << 8)&0xFF00);
         send_spi1(0);
     } else if (g_SPI_RX_flag == 3) {
-        g_motor_conf_vitesse_max |= (signed long) ((((unsigned long) g_SPI_RX_clearReg) << 8)&0x0000FF00);
+        g_motor_conf_codeur_ppt_SPI |= (signed int) (((unsigned int) g_SPI_RX_clearReg)&0x00FF);
         send_spi1(0);
     } else if (g_SPI_RX_flag == 4) {
-        g_motor_conf_vitesse_max |= (signed long) (((unsigned long) g_SPI_RX_clearReg)&0x000000FF);
+        g_motor_conf_vitesse_max_SPI = (signed int) ((((unsigned int) g_SPI_RX_clearReg) << 8)&0xFF00);
         send_spi1(0);
     } else if (g_SPI_RX_flag == 5) {
-        g_motor_conf_courant_max = (unsigned int) ((((unsigned int) g_SPI_RX_clearReg) << 8)&0xFF00);
+        g_motor_conf_vitesse_max_SPI |= (unsigned int) (((unsigned int) g_SPI_RX_clearReg)&0x00FF);
         send_spi1(0);
     } else if (g_SPI_RX_flag == 6) {
-        g_motor_conf_courant_max |= (unsigned int) (((unsigned int) g_SPI_RX_clearReg)&0x00FF);
+        g_motor_conf_courant_max_SPI = (unsigned int) ((((unsigned int) g_SPI_RX_clearReg) << 8)&0xFF00);
         send_spi1(0);
-    }
-    if (g_SPI_RX_flag == 7) {
-        g_motor_conf_codeur_ppt = (signed long) ((((unsigned long) g_SPI_RX_clearReg) << 24)&0xFF000000);
-        send_spi1(0);
-    } else if (g_SPI_RX_flag == 8) {
-        g_motor_conf_codeur_ppt |= (signed long) ((((unsigned long) g_SPI_RX_clearReg) << 16)&0x00FF0000);
-        send_spi1(0);
-    } else if (g_SPI_RX_flag == 9) {
-        g_motor_conf_codeur_ppt |= (signed long) ((((unsigned long) g_SPI_RX_clearReg) << 8)&0x0000FF00);
-        send_spi1(0);
-    } else if (g_SPI_RX_flag == 10) {
-        g_motor_conf_codeur_ppt |= (signed long) (((unsigned long) g_SPI_RX_clearReg)&0x000000FF);
+    } else if (g_SPI_RX_flag == 7) {
+        g_motor_conf_courant_max_SPI |= (unsigned int) (((unsigned int) g_SPI_RX_clearReg)&0x00FF);
         send_spi1(ACK_SLAVE);
     }
 }
 
 void Gestion_RW_Rmot_conf(void) {
     if (g_SPI_RX_flag == 1) {
-        send_spi1((unsigned char) (g_motor_conf_vitesse_max >> 24));
+        send_spi1(g_interface_mesure_vitesse_SPI);
     } else if (g_SPI_RX_flag == 2) {
-        send_spi1((unsigned char) (g_motor_conf_vitesse_max >> 16));
+        send_spi1((unsigned char) (g_motor_conf_codeur_ppt_SPI >> 8));
     } else if (g_SPI_RX_flag == 3) {
-        send_spi1((unsigned char) (g_motor_conf_vitesse_max >> 8));
+        send_spi1((unsigned char) (g_motor_conf_codeur_ppt_SPI));
     } else if (g_SPI_RX_flag == 4) {
-        send_spi1((unsigned char) g_motor_conf_vitesse_max);
+        send_spi1((unsigned char) g_motor_conf_vitesse_max_SPI >> 8);
     } else if (g_SPI_RX_flag == 5) {
-        send_spi1((unsigned char) (g_motor_conf_courant_max >> 8));
+        send_spi1((unsigned char) (g_motor_conf_vitesse_max_SPI));
     } else if (g_SPI_RX_flag == 6) {
-        send_spi1((unsigned char) (g_motor_conf_courant_max));
+        send_spi1((unsigned char) (g_motor_conf_courant_max_SPI >> 8));
     } else if (g_SPI_RX_flag == 7) {
-        send_spi1((unsigned char) (g_motor_conf_codeur_ppt >> 24));
+        send_spi1((unsigned char) (g_motor_conf_courant_max_SPI));
     } else if (g_SPI_RX_flag == 8) {
-        send_spi1((unsigned char) (g_motor_conf_codeur_ppt >> 16));
-    } else if (g_SPI_RX_flag == 9) {
-        send_spi1((unsigned char) (g_motor_conf_codeur_ppt >> 8));
-    } else if (g_SPI_RX_flag == 10) {
-        send_spi1((unsigned char) (g_motor_conf_codeur_ppt));
-        if (g_motor_conf_codeur_ppt == 0)
-            g_interface_mesure_vitesse = CODEUR_OFF;
-        else 
-            g_interface_mesure_vitesse = CODEUR_ON;
-    } else if (g_SPI_RX_flag == 11) {
         send_spi1(ACK_SLAVE);
     }
 }
@@ -598,7 +578,7 @@ void Gestion_Courant(void) {
         // Somme des mesures de courant effectué diviser par le nb de mesures
         g_mesure_courant /= (unsigned long) g_nb_mes_courant;
         // Reset des variables necessaires à la nouvelles serie d'acquisition
-        WriteSharedVarU16_APP(&u16CurrentValue, (unsigned int)g_mesure_courant);
+        WriteSharedVarU16_APP(&u16CurrentValue, (unsigned int) g_mesure_courant);
         g_mesure_courant = 0;
         g_nb_mes_courant = 0;
     }
