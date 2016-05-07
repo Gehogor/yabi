@@ -1,23 +1,25 @@
+// PIC management
+#include <adc10.h>
 #include <libpic30.h>
+#include <outcompare.h>
 #include <p30F4012.h>
+#include <ports.h>
+#include <spi.h>
+#include <timer.h>
+#include <uart.h>
+#include <qei.h>
 
+// Standard
 #include <stdio.h>
 
+// Current project
 #include "Config.h"
 #include "main.h"
 #include "SharedVarLib.h"
 
-#include <timer.h>
-#include <uart.h>
-#include <outcompare.h>
-#include <adc10.h>
-#include <qei.h>
-#include <spi.h>
-#include <ports.h>
-
 unsigned long g_ID_board = 43981;
 
-//variables de Timer
+// Global timer variable
 unsigned int g_timerSpeed = 0, g_timer_AcqCourant = 0, g_timer_led = 0;
 unsigned int g_timerControl = 0;
 
@@ -28,7 +30,6 @@ unsigned char g_var_led = LED_FREQ_5HZ;
 trame_SPI g_SPI_RX_trame;
 unsigned char g_SPI_RX_flag = 0, g_SPI_RX_trame_valide = 0, g_SPI_RX_clearReg = 0;
 unsigned char g_SPI_RX_NbData[NB_FONCTION + 1];
-
 
 signed int g_motor_pos_H = 0;
 signed long g_motor_pos_mem = 0;
@@ -47,7 +48,6 @@ unsigned char g_mode = MODE_STOP, g_mode_mem = MODE_OPEN; //Initialisation du Mo
 signed long g_motor_pos = 0;
 signed long g_vitesse_desiree = 0;
 signed int g_Vitesse_Cour = 0;
-
 
 unsigned char g_timeMesureSpeed = 0;
 unsigned char g_timeControlLoop = 0;
@@ -73,7 +73,6 @@ signed int g_motor_conf_vitesse_max_SPI = 111;
 unsigned int g_mesure_courant_moy_SPI = 0;
 unsigned int g_Acceleration_Cour_SPI = 0;
 signed int g_Vitesse_Cour_SPI = 0;
-
 
 //Variables partagées info fonctionnement moteur
 u16_shared_var u16CurrentValue;
