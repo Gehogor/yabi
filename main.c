@@ -43,7 +43,8 @@ unsigned char g_stateAcq = 0, g_nb_mes_courant = 0;
 
 signed long g_Erreur_P = 0, g_Erreur_I = 0;
 
-unsigned char g_mode = MODE_STOP, g_mode_mem = MODE_OPEN; //Initialisation du Mode (Mode_mem diff√©rent pour lancer l'init du mode Stop)
+//Initialisation du Mode (Mode_mem diff√©rent pour lancer l'init du mode Stop)
+unsigned char g_mode = MODE_STOP, g_mode_mem = MODE_OPEN;
 
 signed long g_motor_pos = 0;
 signed long g_vitesse_desiree = 0;
@@ -65,7 +66,7 @@ unsigned int g_denom_Kd = 1;
 signed long g_erreur_limite_I = 0;
 
 unsigned char g_interface_mesure_vitesse_SPI = IV_TACHY;
-signed int g_motor_conf_codeur_ppt_SPI = 0;
+unsigned int g_motor_conf_codeur_ppt_SPI = 0;
 unsigned int g_motor_conf_courant_max_SPI = 2330;
 signed int g_motor_conf_vitesse_max_SPI = 111;
 
@@ -74,14 +75,18 @@ unsigned int g_mesure_courant_moy_SPI = 0;
 unsigned int g_Acceleration_Cour_SPI = 0;
 signed int g_Vitesse_Cour_SPI = 0;
 
-//Variables partag√©es info fonctionnement moteur
+//Variables partagÈes info fonctionnement moteur
 u16_shared_var u16CurrentValue;
 u16_shared_var u16AccelerationCour;
 s16_shared_var s16VitesseCour;
 
-//Variables partag√©es info fonctionnement moteur
-//Variables partag√©es parametres PID
-//Variables partag√©es parametres Moteur
+//Variables partagÈes info fonctionnement moteur
+//Variables partagÈes parametres PID
+
+//Variables partagÈes parametres Moteur
+u16_shared_var u16ConfCodeurPPT;
+u16_shared_var u16ConfMaxCurrent;
+s16_shared_var s16ConfMaxSpeed;
 
 int main() {
     // Set up which pins are which
@@ -91,7 +96,7 @@ int main() {
 
     InitFonctionRecep();
 
-    //R√©cup√©ration des parametres dans l'eeprom    
+    //RÈcupÈration des parametres dans l'eeprom    
 
     WriteSharedVarU16_APP(&u16CurrentValue, 0);
 
@@ -169,20 +174,28 @@ void Configure_pins() {
     LATF = 0;
     TRISF = 0xFFFB;
 
-    //      Config & R√©glage Timer1 √† 1khz
+    //      Config & RÈglage Timer1 ‡† 1khz
     ConfigIntTimer1(T1_INT_PRIOR_5 & T1_INT_ON);
     WriteTimer1(0);
-    OpenTimer1(T1_ON & T1_IDLE_STOP & T1_GATE_OFF & T1_PS_1_1 & T1_SYNC_EXT_OFF & T1_SOURCE_INT, PR_T1);
+    OpenTimer1( T1_ON & 
+            T1_IDLE_STOP & 
+            T1_GATE_OFF & 
+            T1_PS_1_1 & 
+            T1_SYNC_EXT_OFF & 
+            T1_SOURCE_INT, 
+            PR_T1);
 
-    //      Config & R√©glage Timer2 √† 10khz
+    //      Config & RÈglage Timer2 ‡† 10khz
     ConfigIntTimer2(T2_INT_PRIOR_3 & T2_INT_ON);
     WriteTimer2(0);
-    OpenTimer2(T2_ON & T2_IDLE_STOP & T2_GATE_OFF & T2_PS_1_1 & T2_SOURCE_INT, PR_T2);
+    OpenTimer2( T2_ON & T2_IDLE_STOP & T2_GATE_OFF & T2_PS_1_1 & T2_SOURCE_INT,
+                PR_T2);
 
-    //      Config & R√©glage Timer4 √† 10hz
+    //      Config & RÈglage Timer4 ‡† 10hz
     ConfigIntTimer4(T4_INT_PRIOR_1 & T4_INT_ON);
     WriteTimer4(0);
-    OpenTimer4(T4_ON & T4_IDLE_STOP & T4_GATE_OFF & T4_PS_1_256 & T4_SOURCE_INT, PR_T4);
+    OpenTimer4( T4_ON & T4_IDLE_STOP & T4_GATE_OFF & T4_PS_1_256 & 
+                T4_SOURCE_INT, PR_T4);
 
     //      Config SPI   
     CloseSPI1();
@@ -190,12 +203,12 @@ void Configure_pins() {
     OpenSPI1(FRAME_ENABLE_OFF & FRAME_SYNC_INPUT & ENABLE_SDO_PIN &
             SPI_MODE16_OFF & SPI_SMP_OFF & SPI_CKE_OFF & SLAVE_ENABLE_ON &
             MASTER_ENABLE_OFF & CLK_POL_ACTIVE_HIGH & SEC_PRESCAL_3_1 &
-            PRI_PRESCAL_64_1,
-            SPI_ENABLE & SPI_IDLE_CON & SPI_RX_OVFLOW_CLR);
+            PRI_PRESCAL_64_1, SPI_ENABLE & SPI_IDLE_CON & SPI_RX_OVFLOW_CLR);
     _SPIROV = 0;
 
     //      Config PWM
-    OpenTimer3(T3_ON & T3_IDLE_STOP & T3_GATE_OFF & T3_PS_1_1 & T3_SOURCE_INT, PR_T3);
+    OpenTimer3( T3_ON & T3_IDLE_STOP & T3_GATE_OFF & T3_PS_1_1 & T3_SOURCE_INT,
+                PR_T3);
     ConfigIntOC1(OC_INT_OFF & OC_INT_PRIOR_4);
     OpenOC1(OC_IDLE_CON & OC_TIMER3_SRC & OC_PWM_FAULT_PIN_DISABLE, 0, 0);
     SetDCOC1PWM(0);
@@ -203,36 +216,30 @@ void Configure_pins() {
     //      Config ADC
     SetChanADC10(ADC_CH0_POS_SAMPLEA_AN0 & ADC_CH0_NEG_SAMPLEA_NVREF);
     ConfigIntADC10(ADC_INT_DISABLE);
-    OpenADC10(ADC_MODULE_ON & ADC_IDLE_CONTINUE & ADC_FORMAT_INTG & ADC_CLK_MANUAL & ADC_AUTO_SAMPLING_OFF & ADC_SAMPLE_INDIVIDUAL & ADC_SAMP_OFF,
-            ADC_VREF_AVDD_AVSS & ADC_SCAN_OFF & ADC_CONVERT_CH0 & ADC_SAMPLES_PER_INT_1 & ADC_ALT_BUF_OFF & ADC_ALT_INPUT_OFF,
-            ADC_SAMPLE_TIME_0 & ADC_CONV_CLK_SYSTEM & ADC_CONV_CLK_3Tcy,
-            ENABLE_AN0_ANA & ENABLE_AN1_ANA,
-            SKIP_SCAN_AN2 & SKIP_SCAN_AN3 & SKIP_SCAN_AN4 & SKIP_SCAN_AN5);
+    OpenADC10(  ADC_MODULE_ON & ADC_IDLE_CONTINUE & ADC_FORMAT_INTG & 
+                ADC_CLK_MANUAL & ADC_AUTO_SAMPLING_OFF & ADC_SAMPLE_INDIVIDUAL &
+                ADC_SAMP_OFF, 
+                ADC_VREF_AVDD_AVSS & ADC_SCAN_OFF & ADC_CONVERT_CH0 & 
+                ADC_SAMPLES_PER_INT_1 & ADC_ALT_BUF_OFF & ADC_ALT_INPUT_OFF,
+                ADC_SAMPLE_TIME_0 & ADC_CONV_CLK_SYSTEM & ADC_CONV_CLK_3Tcy,
+                ENABLE_AN0_ANA & ENABLE_AN1_ANA,
+                SKIP_SCAN_AN2 & SKIP_SCAN_AN3 & SKIP_SCAN_AN4 & SKIP_SCAN_AN5);
 
     //      Config QEI
 
     ConfigIntQEI(QEI_INT_PRI_6 & QEI_INT_ENABLE);
     POSCNT = 0;
     MAXCNT = 0x7FFF;
-    OpenQEI(QEI_IDLE_CON &
-            QEI_INT_CLK &
-            QEI_INDEX_RESET_DISABLE &
-            QEI_CLK_PRESCALE_1 &
-            QEI_GATED_ACC_DISABLE &
-            QEI_INPUTS_NOSWAP &
-            QEI_MODE_x4_MATCH &
-            QEI_DIR_SEL_CNTRL,
-            POS_CNT_ERR_INT_DISABLE &
-            QEI_QE_CLK_DIVIDE_1_4 &
-            QEI_QE_OUT_ENABLE &
-            MATCH_INDEX_PHASEA_HIGH &
+    OpenQEI(QEI_IDLE_CON & QEI_INT_CLK & QEI_INDEX_RESET_DISABLE & 
+            QEI_CLK_PRESCALE_1 & QEI_GATED_ACC_DISABLE & QEI_INPUTS_NOSWAP &
+            QEI_MODE_x4_MATCH & QEI_DIR_SEL_CNTRL,
+            POS_CNT_ERR_INT_DISABLE & QEI_QE_CLK_DIVIDE_1_4 & 
+            QEI_QE_OUT_ENABLE & MATCH_INDEX_PHASEA_HIGH &
             MATCH_INDEX_PHASEB_HIGH);
     QEICONbits.UPDN = 1;
 
-    ConfigINT2(RISING_EDGE_INT &
-            EXT_INT_ENABLE &
-            EXT_INT_PRI_6 &
-            GLOBAL_INT_ENABLE);
+    ConfigINT2( RISING_EDGE_INT & EXT_INT_ENABLE & EXT_INT_PRI_6 &
+                GLOBAL_INT_ENABLE);
 }
 
 void InitFonctionRecep(void) {
@@ -509,23 +516,26 @@ void Gestion_RW_Wmot_conf(void) {
         g_interface_mesure_vitesse_SPI = g_SPI_RX_clearReg;
         send_spi1(0);
     } else if (g_SPI_RX_flag == 2) {
-        g_motor_conf_codeur_ppt_SPI = (signed int) ((((unsigned int) g_SPI_RX_clearReg) << 8)&0xFF00);
+        g_motor_conf_codeur_ppt_SPI = (unsigned int) ((((unsigned int) g_SPI_RX_clearReg) << 8)&0xFF00);
         send_spi1(0);
     } else if (g_SPI_RX_flag == 3) {
-        g_motor_conf_codeur_ppt_SPI |= (signed int) (((unsigned int) g_SPI_RX_clearReg)&0x00FF);
+        g_motor_conf_codeur_ppt_SPI |= (unsigned int) (((unsigned int) g_SPI_RX_clearReg)&0x00FF);
         send_spi1(0);
+        WriteSharedVarU16_SPI(&u16ConfCodeurPPT, g_motor_conf_codeur_ppt_SPI);
     } else if (g_SPI_RX_flag == 4) {
         g_motor_conf_vitesse_max_SPI = (signed int) ((((unsigned int) g_SPI_RX_clearReg) << 8)&0xFF00);
         send_spi1(0);
     } else if (g_SPI_RX_flag == 5) {
-        g_motor_conf_vitesse_max_SPI |= (unsigned int) (((unsigned int) g_SPI_RX_clearReg)&0x00FF);
+        g_motor_conf_vitesse_max_SPI |= (signed int) (((unsigned int) g_SPI_RX_clearReg)&0x00FF);
         send_spi1(0);
+        WriteSharedVarS16_SPI(&s16ConfMaxSpeed, g_motor_conf_vitesse_max_SPI);
     } else if (g_SPI_RX_flag == 6) {
         g_motor_conf_courant_max_SPI = (unsigned int) ((((unsigned int) g_SPI_RX_clearReg) << 8)&0xFF00);
         send_spi1(0);
     } else if (g_SPI_RX_flag == 7) {
         g_motor_conf_courant_max_SPI |= (unsigned int) (((unsigned int) g_SPI_RX_clearReg)&0x00FF);
         send_spi1(ACK_SLAVE);
+        WriteSharedVarU16_SPI(&u16ConfMaxCurrent, g_motor_conf_courant_max_SPI);
     }
 }
 
@@ -559,7 +569,7 @@ void Gestion_LED(unsigned int freq) {
 }
 
 void Gestion_Courant(void) {
-    if ((g_stateAcq == 0) && (g_timer_AcqCourant >= 20)) //cadenc√© √† 100us
+    if ((g_stateAcq == 0) && (g_timer_AcqCourant >= 20)) //cadencÈ ‡ 100us
     {
         g_timer_AcqCourant = 0;
         SetChanADC10(ADC_CSOUT); // Select the requested channel
@@ -574,9 +584,9 @@ void Gestion_Courant(void) {
 
         g_stateAcq = 0;
     } else if ((g_stateAcq == 0) && (g_nb_mes_courant >= 5)) {
-        // Somme des mesures de courant effectu√© diviser par le nb de mesures
+        // Somme des mesures de courant effectuÈ diviser par le nb de mesures
         g_mesure_courant /= (unsigned long) g_nb_mes_courant;
-        // Reset des variables necessaires √† la nouvelles serie d'acquisition
+        // Reset des variables necessaires ‡†la nouvelles serie d'acquisition
         WriteSharedVarU16_APP(&u16CurrentValue, (unsigned int) g_mesure_courant);
         g_mesure_courant = 0;
         g_nb_mes_courant = 0;
@@ -599,33 +609,48 @@ void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void) {
     if (g_timerSpeed >= g_timeMesureSpeed) {
         g_timerSpeed = 0;
 
-        if (g_interface_mesure_vitesse == CODEUR_ON) {
-            g_motor_pos = (((signed long) g_motor_pos_H) << 15)+((signed long) ReadQEI()); //recup position
-            g_motor_vitesse = (((signed long) g_motor_pos)-((signed long) g_motor_pos_mem)); //Determine le nombre de pas depuis la derniere acquisition
-            g_motor_vitesse *= g_multi_timeMesureSpeed_s; //ram√®ne en pas par seconde
+        if (g_interface_mesure_vitesse_SPI == IV_CODEUR) {
+            //recup position
+            g_motor_pos = (((signed long) g_motor_pos_H) << 15)+((signed long) ReadQEI());
+            //Determine le nombre de pas depuis la derniere acquisition
+            g_motor_vitesse = (((signed long) g_motor_pos)-((signed long) g_motor_pos_mem));
+            //ramËne en pas par seconde
+            g_motor_vitesse *= g_multi_timeMesureSpeed_s; 
+            
+            //divise par 32 pour que ca entre dans int et le rende transportable
+            g_Vitesse_Cour = ((signed int)(g_motor_vitesse) / ReadSharedVarU16_APP(&u16ConfCodeurPPT));   
+            
+            //Sauvegarde de la valeur ‡†soustraire pour la prochain calcul
+            g_motor_pos_mem = g_motor_pos; 
 
-            g_Vitesse_Cour = (signed int) (g_motor_vitesse / g_motor_conf_codeur_ppt); //divise par 32 pour que ca entre dans int et le rende transportable  
-
-            g_motor_pos_mem = g_motor_pos; //Sauvegarde de la valeur √† soustraire pour la prochain calcul
-        } else {
+            WriteSharedVarS16_APP(&s16VitesseCour, g_Vitesse_Cour);
+        } else if(g_interface_mesure_vitesse_SPI == IV_TACHY){
             g_motor_vitesse = ((signed long) g_pulse_drive)*((signed long) g_multi_timeMesureSpeed_s);
             g_pulse_drive = 0;
             if (DRIVER_DIRO == 1)g_motor_vitesse *= -1;
-
-            g_Vitesse_Cour = (signed int) (g_motor_vitesse / 24); //RPS    driver = 24 pulses / tr
+            
+            //RPS    driver = 24 pulses / tr
+            g_Vitesse_Cour = (signed int) (g_motor_vitesse / 24); 
+            
+            WriteSharedVarS16_APP(&s16VitesseCour, g_Vitesse_Cour);
+        } else {
+            g_Erreur_Cour++;           
         }
-        WriteSharedVarS16_APP(&s16VitesseCour, g_Vitesse_Cour);
     }
 
     if (g_timerControl >= g_timeControlLoop) {
         g_timerControl = 0;
 
         if (g_flag_asser == LOOP) {
-            g_Erreur_P = (g_vitesse_desiree) - g_motor_vitesse; // Erreur Proportionnelle
-            g_Erreur_I += g_Erreur_P; // Cumul Int√©gral
-
-            g_dutycycle = g_Erreur_P * g_nom_Kp / g_denom_Kp; // Calcul Asservissement Kp
-            g_dutycycle += g_Erreur_I * g_nom_Ki / g_denom_Ki; // Calcul Asservissement Ki
+            // Erreur Proportionnelle
+            g_Erreur_P = (g_vitesse_desiree) - g_motor_vitesse; 
+            // Cumul IntÈgrale
+            g_Erreur_I += g_Erreur_P;
+            
+            // Calcul Asservissement Kp
+            g_dutycycle = g_Erreur_P * g_nom_Kp / g_denom_Kp;
+            // Calcul Asservissement Ki
+            g_dutycycle += g_Erreur_I * g_nom_Ki / g_denom_Ki; 
         } else {
             g_dutycycle = g_vitesse_desiree*PWM_VAL_CENTRE;
         }
@@ -640,7 +665,7 @@ void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void) {
 void __attribute__((interrupt, no_auto_psv)) _T2Interrupt(void) {
     WriteTimer2(0);
     _T2IF = 0;
-    //Timer regl√© sur 100us
+    //Timer reglÈ sur 100us
     g_timer_AcqCourant++;
 
 }
@@ -650,7 +675,7 @@ void __attribute__((interrupt, no_auto_psv)) _T2Interrupt(void) {
 void __attribute__((interrupt, no_auto_psv)) _T4Interrupt(void) {
     WriteTimer4(0);
     _T4IF = 0;
-    //Timer regl√© sur 100ms
+    //Timer reglÈ sur 100ms
     g_timer_led++;
 }
 
