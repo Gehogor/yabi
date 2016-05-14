@@ -15,31 +15,43 @@
 typedef struct {
     unsigned char mutex;
     unsigned char u8_data[2];
+    unsigned char u8_data_APP;
+    unsigned char u8_data_SPI;
 } u8_shared_var;
 
 typedef struct {
     unsigned char mutex;
     unsigned int u16_data[2];
+    unsigned int u16_data_APP;
+    unsigned int u16_data_SPI;
 } u16_shared_var;
 
 typedef struct {
     unsigned char mutex;
-    unsigned long u32_data[2];
+    unsigned long int u32_data[2];
+    unsigned long int u32_data_APP;
+    unsigned long int u32_data_SPI;
 } u32_shared_var;
 
 typedef struct {
     unsigned char mutex;
     signed char s8_data[2];
+    signed char s8_data_APP;
+    signed char s8_data_SPI;
 } s8_shared_var;
 
 typedef struct {
     unsigned char mutex;
     signed int s16_data[2];
+    signed int s16_data_APP;
+    signed int s16_data_SPI;
 } s16_shared_var;
 
 typedef struct {
     unsigned char mutex;
-    signed long s32_data[2];
+    signed long int s32_data[2];
+    signed long int s32_data_APP;
+    signed long int s32_data_SPI;
 } s32_shared_var;
 
 void WriteSharedVarU8_APP(u8_shared_var *pt_u8ShVar, unsigned char val);
