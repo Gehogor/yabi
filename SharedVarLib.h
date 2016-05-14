@@ -54,35 +54,35 @@ typedef struct {
     signed long int s32_data_SPI;
 } s32_shared_var;
 
-void WriteSharedVarU8_APP(u8_shared_var *pt_u8ShVar, unsigned char val);
-unsigned char ReadSharedVarU8_APP(u8_shared_var *pt_u8ShVar);
-void WriteSharedVarU8_SPI(u8_shared_var *pt_u8ShVar, unsigned char val);
-unsigned char ReadSharedVarU8_SPI(u8_shared_var *pt_u8ShVar);
+void WriteSharedVarU8_APP(u8_shared_var *pt_u8ShVar);
+void ReadSharedVarU8_APP(u8_shared_var *pt_u8ShVar);
+void WriteSharedVarU8_SPI(u8_shared_var *pt_u8ShVar);
+void ReadSharedVarU8_SPI(u8_shared_var *pt_u8ShVar);
 
-void WriteSharedVarU16_APP(u16_shared_var *pt_u16ShVar, unsigned int val);
-unsigned int ReadSharedVarU16_APP(u16_shared_var *pt_u16ShVar);
-void WriteSharedVarU16_SPI(u16_shared_var *pt_u16ShVar, unsigned int val);
-unsigned int ReadSharedVarU16_SPI(u16_shared_var *pt_u16ShVar);
+void WriteSharedVarU16_APP(u16_shared_var *pt_u16ShVar);
+void ReadSharedVarU16_APP(u16_shared_var *pt_u16ShVar);
+void WriteSharedVarU16_SPI(u16_shared_var *pt_u16ShVar);
+void ReadSharedVarU16_SPI(u16_shared_var *pt_u16ShVar);
 
-void WriteSharedVarU32_APP(u32_shared_var *pt_u32ShVar, unsigned long val);
-unsigned long ReadSharedVarU32_APP(u32_shared_var *pt_u32ShVar);
-void WriteSharedVarU32_SPI(u32_shared_var *pt_u32ShVar, unsigned long val);
-unsigned long ReadSharedVarU32_SPI(u32_shared_var *pt_u32ShVar);
+void WriteSharedVarU32_APP(u32_shared_var *pt_u32ShVar);
+void ReadSharedVarU32_APP(u32_shared_var *pt_u32ShVar);
+void WriteSharedVarU32_SPI(u32_shared_var *pt_u32ShVar);
+void ReadSharedVarU32_SPI(u32_shared_var *pt_u32ShVar);
 
-void WriteSharedVarS8_APP(s8_shared_var *pt_s8ShVar, signed char val);
-signed char ReadSharedVarS8_APP(s8_shared_var *pt_s8ShVar);
-void WriteSharedVarS8_SPI(s8_shared_var *pt_s8ShVar, signed char val);
-signed char ReadSharedVarS8_SPI(s8_shared_var *pt_s8ShVar);
+void WriteSharedVarS8_APP(s8_shared_var *pt_s8ShVar);
+void ReadSharedVarS8_APP(s8_shared_var *pt_s8ShVar);
+void WriteSharedVarS8_SPI(s8_shared_var *pt_s8ShVar);
+void ReadSharedVarS8_SPI(s8_shared_var *pt_s8ShVar);
 
-void WriteSharedVarS16_APP(s16_shared_var *pt_s16ShVar, signed int val);
-signed int ReadSharedVarS16_APP(s16_shared_var *pt_s16ShVar);
-void WriteSharedVarS16_SPI(s16_shared_var *pt_s16ShVar, signed int val);
-signed int ReadSharedVarS16_SPI(s16_shared_var *pt_s16ShVar);
+void WriteSharedVarS16_APP(s16_shared_var *pt_s16ShVar);
+void ReadSharedVarS16_APP(s16_shared_var *pt_s16ShVar);
+void WriteSharedVarS16_SPI(s16_shared_var *pt_s16ShVar);
+void ReadSharedVarS16_SPI(s16_shared_var *pt_s16ShVar);
 
-void WriteSharedVarS32_APP(s32_shared_var *pt_s32ShVar, signed long int val);
-signed long int ReadSharedVarS32_APP(s32_shared_var *pt_s32ShVar);
-void WriteSharedVarS32_SPI(s32_shared_var *pt_s32ShVar, signed long int val);
-signed long int ReadSharedVarS32_SPI(s32_shared_var *pt_s32ShVar);
+void WriteSharedVarS32_APP(s32_shared_var *pt_s32ShVar);
+void ReadSharedVarS32_APP(s32_shared_var *pt_s32ShVar);
+void WriteSharedVarS32_SPI(s32_shared_var *pt_s32ShVar);
+void ReadSharedVarS32_SPI(s32_shared_var *pt_s32ShVar);
 
 #endif	/* SHAREDVARLIB_H */
 
