@@ -700,18 +700,16 @@ void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void) {
             s32MotorPosition.s32_data_APP = (((signed long) g_motor_pos_H) << 15)+((signed long) ReadQEI());
             WriteSharedVarS32_SPI(&s32MotorPosition);
             //Determine le nombre de pas depuis la derniere acquisition
-            g_motor_vitesse = (((signed long) s32MotorPosition.s32_data_APP)-((signed long) g_motor_pos_mem));
+            g_motor_vitesse = s32MotorPosition.s32_data_APP - g_motor_pos_mem;
             //ramène en pas par seconde
             g_motor_vitesse *= g_multi_timeMesureSpeed_s; 
-            
-            ReadSharedVarU16_APP(&u16ConfCodeurPPT);
             //divise par 32 pour que ca entre dans int et le rende transportable
-            s16MesuredSpeed.s16_data_APP = ((signed int)(g_motor_vitesse) / (signed int)u16ConfCodeurPPT.u16_data_APP);   
-            
+            ReadSharedVarU16_APP(&u16ConfCodeurPPT);
+            s16MesuredSpeed.s16_data_APP = (signed int)(g_motor_vitesse / (signed long)u16ConfCodeurPPT.u16_data_APP);   
+            WriteSharedVarS16_APP(&s16MesuredSpeed);  
             //Sauvegarde de la valeur à soustraire pour la prochain calcul
-            g_motor_pos_mem = g_motor_pos_APP; 
-
-            
+            g_motor_pos_mem = s32MotorPosition.s32_data_APP; 
+           
         } else if(g_interface_mesure_vitesse_SPI == IV_TACHY){
             s32MotorPosition.s32_data_APP = ((signed long) g_pulse_drive)*((signed long) g_multi_timeMesureSpeed_s);
             g_pulse_drive = 0;
