@@ -174,7 +174,7 @@ void Gestion_LED(unsigned int freq);
 void Gestion_Courant(void);
 unsigned int received_spi1(void);
 void send_spi1(unsigned int mtdata);
-void InitSharedVar(void);
+void InitVariable(void);
 
 #endif	/* DRIVER_DSPIC_H */
 
