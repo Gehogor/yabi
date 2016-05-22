@@ -11,7 +11,8 @@
 // Management of unsigned char -----------------------------------------------//
 void WriteSharedVarU8_APP(u8_shared_var *pt_u8ShVar)
 {
-    while (pt_u8ShVar->mutex == LOCK);
+    while( pt_u8ShVar->mutex == LOCK );
+
     pt_u8ShVar->mutex = LOCK;
     pt_u8ShVar->u8_data[0] = pt_u8ShVar->u8_data_APP;
     pt_u8ShVar->mutex = UNLOCK;
@@ -21,7 +22,8 @@ void WriteSharedVarU8_APP(u8_shared_var *pt_u8ShVar)
 void ReadSharedVarU8_APP(u8_shared_var *pt_u8ShVar)
 {
     unsigned char val;
-    while (pt_u8ShVar->mutex == LOCK);
+    while( pt_u8ShVar->mutex == LOCK );
+
     pt_u8ShVar->mutex = LOCK;
     val = pt_u8ShVar->u8_data[0];
     pt_u8ShVar->mutex = UNLOCK;
@@ -42,7 +44,8 @@ void ReadSharedVarU8_SPI(u8_shared_var *pt_u8ShVar)
 // Management of unsigned int ------------------------------------------------//
 void WriteSharedVarU16_APP(u16_shared_var *pt_u16ShVar)
 {
-    while (pt_u16ShVar->mutex == LOCK);
+    while( pt_u16ShVar->mutex == LOCK );
+
     pt_u16ShVar->mutex = LOCK;
     pt_u16ShVar->u16_data[0] = pt_u16ShVar->u16_data_APP;
     pt_u16ShVar->mutex = UNLOCK;
@@ -52,7 +55,8 @@ void WriteSharedVarU16_APP(u16_shared_var *pt_u16ShVar)
 void ReadSharedVarU16_APP(u16_shared_var *pt_u16ShVar)
 {
     unsigned int val;
-    while (pt_u16ShVar->mutex == LOCK);
+    while( pt_u16ShVar->mutex == LOCK );
+
     pt_u16ShVar->mutex = LOCK;
     val = pt_u16ShVar->u16_data[0];
     pt_u16ShVar->mutex = UNLOCK;
@@ -106,7 +110,7 @@ void ReadSharedVarU32_SPI(u32_shared_var *pt_u32ShVar)
 // Management of signed char -------------------------------------------------//
 void WriteSharedVarS8_APP(s8_shared_var *pt_s8ShVar)
 {
-    while (pt_s8ShVar->mutex == LOCK);
+    while( pt_s8ShVar->mutex == LOCK );
 
     pt_s8ShVar->mutex = LOCK;
     pt_s8ShVar->s8_data[0] = pt_s8ShVar->s8_data_APP;
@@ -117,7 +121,7 @@ void WriteSharedVarS8_APP(s8_shared_var *pt_s8ShVar)
 void ReadSharedVarS8_APP(s8_shared_var *pt_s8ShVar)
 {
     signed char val;
-    while (pt_s8ShVar->mutex == LOCK);
+    while( pt_s8ShVar->mutex == LOCK );
 
     pt_s8ShVar->mutex = LOCK;
     val = pt_s8ShVar->s8_data[0];
@@ -139,7 +143,7 @@ void ReadSharedVarS8_SPI(s8_shared_var *pt_s8ShVar)
 // Management of signed int --------------------------------------------------//
 void WriteSharedVarS16_APP(s16_shared_var *pt_s16ShVar)
 {
-    while (pt_s16ShVar->mutex == LOCK);
+    while( pt_s16ShVar->mutex == LOCK );
 
     pt_s16ShVar->mutex = LOCK;
     pt_s16ShVar->s16_data[0] = pt_s16ShVar->s16_data_APP;
@@ -150,7 +154,8 @@ void WriteSharedVarS16_APP(s16_shared_var *pt_s16ShVar)
 void ReadSharedVarS16_APP(s16_shared_var *pt_s16ShVar)
 {
     signed int val;
-    while (pt_s16ShVar->mutex == LOCK);
+    while( pt_s16ShVar->mutex == LOCK );
+
     pt_s16ShVar->mutex = LOCK;
     val = pt_s16ShVar->s16_data[0];
     pt_s16ShVar->mutex = UNLOCK;
@@ -171,7 +176,7 @@ void ReadSharedVarS16_SPI(s16_shared_var *pt_s16ShVar)
 // Management of signed long -------------------------------------------------//
 void WriteSharedVarS32_APP(s32_shared_var *pt_s32ShVar)
 {
-    while (pt_s32ShVar->mutex == LOCK);
+    while( pt_s32ShVar->mutex == LOCK );
 
     pt_s32ShVar->mutex = LOCK;
     pt_s32ShVar->s32_data[0] = pt_s32ShVar->s32_data_APP;
@@ -182,7 +187,7 @@ void WriteSharedVarS32_APP(s32_shared_var *pt_s32ShVar)
 void ReadSharedVarS32_APP(s32_shared_var *pt_s32ShVar)
 {
     signed long int val;
-    while (pt_s32ShVar->mutex == LOCK);
+    while( pt_s32ShVar->mutex == LOCK );
 
     pt_s32ShVar->mutex = LOCK;
     val = pt_s32ShVar->s32_data[0];
