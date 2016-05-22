@@ -1,3 +1,17 @@
+/*
+ *__     __        ____  _____
+ *\ \   / / /\    |  _ \|_   _|
+ * \ \_/ / /  \   | |_) | | |
+ *  \   / / /\ \  |  _ <  | |
+ *   | | / ____ \ | |_) |_| |_
+ *   |_|/_/    \_\|____/|_____|
+ *
+ * File:   main.c
+ * Author: Yann
+ *
+ * Created on 25 avril 2016, 19:01
+ */
+
 // PIC management
 #include <adc10.h>
 #include <libpic30.h>
