@@ -114,7 +114,8 @@ u16_shared_var u16ConfCodeurPPT;
 u16_shared_var u16ConfMaxCurrent;
 s16_shared_var s16ConfMaxSpeed;
 
-int main() {
+int main()
+{
     Configure_pins();
     InitDriver();
     InitFonctionRecep();
@@ -126,7 +127,8 @@ int main() {
 
     LED = LED_OFF;
 
-    while (1) {
+    while(1)
+    {
         Gestion_LED(g_var_led);
 
         Gestion_Courant();
@@ -138,28 +140,26 @@ int main() {
                     SetDCOC1PWM(PWM_VAL_CENTRE);
                     g_flag_asser = STOP;
                     g_var_led = LED_FREQ_1HZ;
-                    break;
+                break;
                 case MODE_OPEN:
                     DRIVER_COAST = 1; //Mise on du Driver
                     g_flag_asser = OPEN;
                     g_var_led = LED_FREQ_2HZ;
-                    break;
+                break;
                 case MODE_ASSER:
                     DRIVER_COAST = 1; //Mise on du Driver
                     g_flag_asser = LOOP;
                     g_var_led = LED_FREQ_5HZ;
-                    break;
+                break;
                 default:
                     DRIVER_COAST = 0; //Mise off du Driver
                     g_flag_asser = STOP;
                     g_var_led = LED_FREQ_1HZ;
-                    break;
+                break;
             }
             g_mode_mem = g_mode;
         }
     }
-
-
 
     CloseTimer1();
     CloseTimer2();
@@ -199,13 +199,13 @@ void Configure_pins()
     // Timer1 configuration (1khz).
     ConfigIntTimer1(T1_INT_PRIOR_5 & T1_INT_ON);
     WriteTimer1(0);
-    OpenTimer1( T1_ON & 
-            T1_IDLE_STOP & 
-            T1_GATE_OFF & 
-            T1_PS_1_1 & 
-            T1_SYNC_EXT_OFF & 
-            T1_SOURCE_INT, 
-            PR_T1);
+    OpenTimer1( T1_ON &
+                T1_IDLE_STOP &
+                T1_GATE_OFF &
+                T1_PS_1_1 &
+                T1_SYNC_EXT_OFF &
+                T1_SOURCE_INT,
+                PR_T1);
 
     // Timer2 configuration (10khz).
     ConfigIntTimer2(T2_INT_PRIOR_3 & T2_INT_ON);
@@ -216,16 +216,16 @@ void Configure_pins()
     // Timer4 configuration (10hz).
     ConfigIntTimer4(T4_INT_PRIOR_1 & T4_INT_ON);
     WriteTimer4(0);
-    OpenTimer4( T4_ON & T4_IDLE_STOP & T4_GATE_OFF & T4_PS_1_256 & 
+    OpenTimer4( T4_ON & T4_IDLE_STOP & T4_GATE_OFF & T4_PS_1_256 &
                 T4_SOURCE_INT, PR_T4);
 
     // SPI configuration.
     CloseSPI1();
     ConfigIntSPI1(SPI_INT_EN & SPI_INT_PRI_7);
     OpenSPI1(FRAME_ENABLE_OFF & FRAME_SYNC_INPUT & ENABLE_SDO_PIN &
-            SPI_MODE16_OFF & SPI_SMP_OFF & SPI_CKE_OFF & SLAVE_ENABLE_ON &
-            MASTER_ENABLE_OFF & CLK_POL_ACTIVE_HIGH & SEC_PRESCAL_3_1 &
-            PRI_PRESCAL_64_1, SPI_ENABLE & SPI_IDLE_CON & SPI_RX_OVFLOW_CLR);
+             SPI_MODE16_OFF & SPI_SMP_OFF & SPI_CKE_OFF & SLAVE_ENABLE_ON &
+             MASTER_ENABLE_OFF & CLK_POL_ACTIVE_HIGH & SEC_PRESCAL_3_1 &
+             PRI_PRESCAL_64_1, SPI_ENABLE & SPI_IDLE_CON & SPI_RX_OVFLOW_CLR);
     _SPIROV = 0;
 
     // PWM configuration.
@@ -238,10 +238,10 @@ void Configure_pins()
     // ADC configuration.
     SetChanADC10(ADC_CH0_POS_SAMPLEA_AN0 & ADC_CH0_NEG_SAMPLEA_NVREF);
     ConfigIntADC10(ADC_INT_DISABLE);
-    OpenADC10(  ADC_MODULE_ON & ADC_IDLE_CONTINUE & ADC_FORMAT_INTG & 
+    OpenADC10(  ADC_MODULE_ON & ADC_IDLE_CONTINUE & ADC_FORMAT_INTG &
                 ADC_CLK_MANUAL & ADC_AUTO_SAMPLING_OFF & ADC_SAMPLE_INDIVIDUAL &
-                ADC_SAMP_OFF, 
-                ADC_VREF_AVDD_AVSS & ADC_SCAN_OFF & ADC_CONVERT_CH0 & 
+                ADC_SAMP_OFF,
+                ADC_VREF_AVDD_AVSS & ADC_SCAN_OFF & ADC_CONVERT_CH0 &
                 ADC_SAMPLES_PER_INT_1 & ADC_ALT_BUF_OFF & ADC_ALT_INPUT_OFF,
                 ADC_SAMPLE_TIME_0 & ADC_CONV_CLK_SYSTEM & ADC_CONV_CLK_3Tcy,
                 ENABLE_AN0_ANA & ENABLE_AN1_ANA,
@@ -251,10 +251,10 @@ void Configure_pins()
     ConfigIntQEI(QEI_INT_PRI_6 & QEI_INT_ENABLE);
     POSCNT = 0;
     MAXCNT = 0x7FFF;
-    OpenQEI(QEI_IDLE_CON & QEI_INT_CLK & QEI_INDEX_RESET_DISABLE & 
+    OpenQEI(QEI_IDLE_CON & QEI_INT_CLK & QEI_INDEX_RESET_DISABLE &
             QEI_CLK_PRESCALE_1 & QEI_GATED_ACC_DISABLE & QEI_INPUTS_NOSWAP &
             QEI_MODE_x4_MATCH & QEI_DIR_SEL_CNTRL,
-            POS_CNT_ERR_INT_DISABLE & QEI_QE_CLK_DIVIDE_1_4 & 
+            POS_CNT_ERR_INT_DISABLE & QEI_QE_CLK_DIVIDE_1_4 &
             QEI_QE_OUT_ENABLE & MATCH_INDEX_PHASEA_HIGH &
             MATCH_INDEX_PHASEB_HIGH);
     QEICONbits.UPDN = 1;
@@ -344,136 +344,207 @@ unsigned int read_analog_channel(int channel)
     return ReadADC10(0);
 }
 
-void WriteSPI1_c(unsigned char c) {
+void WriteSPI1_c(unsigned char c)
+{
     WriteSPI1(c);
     while (SPI1STATbits.SPITBF);
 }
 
-unsigned int received_spi1(void) {
+unsigned int received_spi1(void)
+{
     return SPI1BUF;
 }
 
-void send_spi1(unsigned int mtdata) {
+void send_spi1(unsigned int mtdata)
+{
     SPI1BUF = mtdata;
 }
 
-void Gestion_RW_Wconsigne(void) {
-    if (g_SPI_RX_flag == 1) {
+void Gestion_RW_Wconsigne(void)
+{
+    if (g_SPI_RX_flag == 1)
+    {
         ReadSharedVarS32_SPI(&s32MotorPosition);
         s16SetpointSpeed.s16_data_SPI = (signed int) ((((unsigned int) g_SPI_RX_clearReg) << 8)&0xFF00);
         send_spi1((unsigned char) (s32MotorPosition.s32_data_SPI >> 24));
-    } else if (g_SPI_RX_flag == 2) {
+    }
+    else if (g_SPI_RX_flag == 2)
+    {
         s16SetpointSpeed.s16_data_SPI |= (signed int) (((unsigned int) g_SPI_RX_clearReg)&0x00FF);
         send_spi1((unsigned char) (s32MotorPosition.s32_data_SPI >> 16));
         WriteSharedVarS32_SPI(&s16SetpointSpeed);
-    } else if (g_SPI_RX_flag == 3) {
+    }
+    else if (g_SPI_RX_flag == 3)
+    {
         send_spi1((unsigned char) (s32MotorPosition.s32_data_SPI >> 8));
-    } else if (g_SPI_RX_flag == 4) {
+    }
+    else if (g_SPI_RX_flag == 4)
+    {
         send_spi1((unsigned char) s32MotorPosition.s32_data_SPI);
-    } else if (g_SPI_RX_flag == 5) {
+    }
+    else if (g_SPI_RX_flag == 5)
+    {
         ReadSharedVarS16_SPI(&s16MesuredSpeed);
         send_spi1((unsigned char) (s16MesuredSpeed.s16_data_SPI >> 8));
-    } else if (g_SPI_RX_flag == 6) {
+    }
+    else if (g_SPI_RX_flag == 6)
+    {
         send_spi1((unsigned char) (s16MesuredSpeed.s16_data_SPI));
-    } else if (g_SPI_RX_flag == 7) {
+    }
+    else if (g_SPI_RX_flag == 7)
+    {
         ReadSharedVarS16_SPI(&s16MesuredAcceleration);
         send_spi1((unsigned char) (s16MesuredAcceleration.s16_data_SPI >> 8));
-    } else if (g_SPI_RX_flag == 8) {
+    }
+    else if (g_SPI_RX_flag == 8)
+    {
         send_spi1((unsigned char) (s16MesuredAcceleration.s16_data_SPI));
-    } else if (g_SPI_RX_flag == 9) {
+    }
+    else if (g_SPI_RX_flag == 9)
+    {
         ReadSharedVarU16_SPI(&u16MesuredCurrent);
         send_spi1((unsigned char) (u16MesuredCurrent.u16_data_SPI >> 8));
-    } else if (g_SPI_RX_flag == 10) {
+    }
+    else if (g_SPI_RX_flag == 10)
+    {
         send_spi1((unsigned char) (u16MesuredCurrent.u16_data_SPI));
-    } else if (g_SPI_RX_flag == 11) {
+    }
+    else if (g_SPI_RX_flag == 11)
+    {
         send_spi1(ACK_SLAVE);
     }
 }
 
-void Gestion_RW_Wmode(void) {
-    if (g_SPI_RX_flag == 1) {
+void Gestion_RW_Wmode(void)
+{
+    if (g_SPI_RX_flag == 1)
+    {
         g_mode = g_SPI_RX_clearReg;
         send_spi1(ACK_SLAVE);
     }
 }
 
-void Gestion_RW_Wposition(void) {
-    if (g_SPI_RX_flag == 1) {
+void Gestion_RW_Wposition(void)
+{
+    if (g_SPI_RX_flag == 1)
+    {
         s32MotorPosition.s32_data_SPI = (signed long) ((((unsigned long) g_SPI_RX_clearReg) << 24)&0xFF000000);
         send_spi1(0);
-    } else if (g_SPI_RX_flag == 2) {
+    }
+    else if (g_SPI_RX_flag == 2)
+    {
         s32MotorPosition.s32_data_SPI |= (signed long) ((((unsigned long) g_SPI_RX_clearReg) << 16)&0x00FF0000);
         send_spi1(0);
-    } else if (g_SPI_RX_flag == 3) {
+    }
+    else if (g_SPI_RX_flag == 3)
+    {
         s32MotorPosition.s32_data_SPI |= (signed long) ((((unsigned long) g_SPI_RX_clearReg) << 8)&0x0000FF00);
         send_spi1(0);
-    } else if (g_SPI_RX_flag == 4) {
+    }
+    else if (g_SPI_RX_flag == 4)
+    {
         s32MotorPosition.s32_data_SPI |= (signed long) (((unsigned long) g_SPI_RX_clearReg)&0x000000FF);
         send_spi1(ACK_SLAVE);
         WriteSharedVarS32_SPI(&s32MotorPosition);
     }
 }
 
-void Gestion_RW_Wconfig(void) {
-    if (g_SPI_RX_flag == 1) {
+void Gestion_RW_Wconfig(void)
+{
+    if (g_SPI_RX_flag == 1)
+    {
         u16KpNum.u16_data_SPI= (unsigned int) ((((unsigned int) g_SPI_RX_clearReg) << 8)&0xFF00);
         send_spi1(0);
-    } else if (g_SPI_RX_flag == 2) {
+    }
+    else if (g_SPI_RX_flag == 2)
+    {
         u16KpNum.u16_data_SPI |= (unsigned int) (((unsigned int) g_SPI_RX_clearReg)&0x00FF);
         send_spi1(0);
         WriteSharedVarU16_SPI(&u16KpNum);
-    } else if (g_SPI_RX_flag == 3) {
+    }
+    else if (g_SPI_RX_flag == 3)
+    {
         u16KpDenum.u16_data_SPI = (unsigned int) ((((unsigned int) g_SPI_RX_clearReg) << 8)&0xFF00);
         send_spi1(0);
-    } else if (g_SPI_RX_flag == 4) {
+    }
+    else if (g_SPI_RX_flag == 4)
+    {
         u16KpDenum.u16_data_SPI |= (unsigned int) (((unsigned int) g_SPI_RX_clearReg)&0x00FF);
         send_spi1(0);
         WriteSharedVarU16_SPI(&u16KpDenum);
-    } else if (g_SPI_RX_flag == 5) {
+    }
+    else if (g_SPI_RX_flag == 5)
+    {
         u16KiNum.u16_data_SPI = (unsigned int) ((((unsigned int) g_SPI_RX_clearReg) << 8)&0xFF00);
         send_spi1(0);
-    } else if (g_SPI_RX_flag == 6) {
+    }
+    else if (g_SPI_RX_flag == 6)
+    {
         u16KiNum.u16_data_SPI |= (unsigned int) (((unsigned int) g_SPI_RX_clearReg)&0x00FF);
         send_spi1(0);
         WriteSharedVarU16_SPI(&u16KiNum);
-    } else if (g_SPI_RX_flag == 7) {
+    }
+    else if (g_SPI_RX_flag == 7)
+    {
         u16KiDenum.u16_data_SPI = (unsigned int) ((((unsigned int) g_SPI_RX_clearReg) << 8)&0xFF00);
         send_spi1(0);
-    } else if (g_SPI_RX_flag == 8) {
+    }
+    else if (g_SPI_RX_flag == 8)
+    {
         u16KiDenum.u16_data_SPI |= (unsigned int) (((unsigned int) g_SPI_RX_clearReg)&0x00FF);
         send_spi1(0);
         WriteSharedVarU16_SPI(&u16KiDenum);
-    } else if (g_SPI_RX_flag == 9) {
+    }
+    else if (g_SPI_RX_flag == 9)
+    {
         u16KdNum.u16_data_SPI = (unsigned int) ((((unsigned int) g_SPI_RX_clearReg) << 8)&0xFF00);
         send_spi1(0);
-    } else if (g_SPI_RX_flag == 10) {
+    }
+    else if (g_SPI_RX_flag == 10)
+    {
         u16KdNum.u16_data_SPI |= (unsigned int) (((unsigned int) g_SPI_RX_clearReg)&0x00FF);
         send_spi1(0);
         WriteSharedVarU16_SPI(&u16KdNum);
-    } else if (g_SPI_RX_flag == 11) {
+    }
+    else if (g_SPI_RX_flag == 11)
+    {
         u16KdDenum.u16_data_SPI = (unsigned int) ((((unsigned int) g_SPI_RX_clearReg) << 8)&0xFF00);
         send_spi1(0);
-    } else if (g_SPI_RX_flag == 12) {
+    }
+    else if (g_SPI_RX_flag == 12)
+    {
         u16KdDenum.u16_data_SPI |= (unsigned int) (((unsigned int) g_SPI_RX_clearReg)&0x00FF);
         send_spi1(0);
         WriteSharedVarU16_SPI(&u16KdDenum);
-    } else if (g_SPI_RX_flag == 13) {
+    }
+    else if (g_SPI_RX_flag == 13)
+    {
         s32IErrorMax.s32_data_SPI = (signed long) ((((unsigned long) g_SPI_RX_clearReg) << 24)&0xFF000000);
         send_spi1(0);
-    } else if (g_SPI_RX_flag == 14) {
+    }
+    else if (g_SPI_RX_flag == 14)
+    {
         s32IErrorMax.s32_data_SPI |= (signed long) ((((unsigned long) g_SPI_RX_clearReg) << 16)&0x00FF0000);
         send_spi1(0);
-    } else if (g_SPI_RX_flag == 15) {
+    }
+    else if (g_SPI_RX_flag == 15)
+    {
         s32IErrorMax.s32_data_SPI |= (signed long) ((((unsigned long) g_SPI_RX_clearReg) << 8)&0x0000FF00);
         send_spi1(0);
-    } else if (g_SPI_RX_flag == 16) {
+    }
+    else if (g_SPI_RX_flag == 16)
+    {
         s32IErrorMax.s32_data_SPI |= (signed long) (((unsigned long) g_SPI_RX_clearReg)&0x000000FF);
         send_spi1(0);
         WriteSharedVarS32_SPI(&s32IErrorMax);
-    } else if (g_SPI_RX_flag == 17) {
+    }
+    else if (g_SPI_RX_flag == 17)
+    {
         g_TimeOut_Recep = g_SPI_RX_clearReg;
         send_spi1(0);
-    } else if (g_SPI_RX_flag == 18) {
+    }
+    else if (g_SPI_RX_flag == 18)
+    {
         g_timeMesureSpeed = g_SPI_RX_clearReg;
         send_spi1(ACK_SLAVE);
         g_multi_timeMesureSpeed_s = 1000 / ((unsigned int) g_timeMesureSpeed);
@@ -481,201 +552,321 @@ void Gestion_RW_Wconfig(void) {
     }
 }
 
-void Gestion_RW_Rposition(void) {
-    if (g_SPI_RX_flag == 1) {
+void Gestion_RW_Rposition(void)
+{
+    if (g_SPI_RX_flag == 1)
+    {
         ReadSharedVarS32_SPI(&s32MotorPosition);
         send_spi1((unsigned char) (s32MotorPosition.s32_data_SPI >> 24));
-    } else if (g_SPI_RX_flag == 2) {
+    }
+    else if (g_SPI_RX_flag == 2)
+    {
         send_spi1((unsigned char) (s32MotorPosition.s32_data_SPI >> 16));
-    } else if (g_SPI_RX_flag == 3) {
+    }
+    else if (g_SPI_RX_flag == 3)
+    {
         send_spi1((unsigned char) (s32MotorPosition.s32_data_SPI >> 8));
-    } else if (g_SPI_RX_flag == 4) {
+    }
+    else if (g_SPI_RX_flag == 4)
+    {
         send_spi1((unsigned char) s32MotorPosition.s32_data_SPI);
-    } else if (g_SPI_RX_flag == 5) {
+    }
+    else if (g_SPI_RX_flag == 5)
+    {
         send_spi1(ACK_SLAVE);
     }
 }
 
-void Gestion_RW_Rvitesse(void) {
-    if (g_SPI_RX_flag == 1) {
+void Gestion_RW_Rvitesse(void)
+{
+    if (g_SPI_RX_flag == 1)
+    {
         ReadSharedVarS16_SPI(&s16MesuredSpeed);
         send_spi1((unsigned char) (s16MesuredSpeed.s16_data_SPI >> 8));
-    } else if (g_SPI_RX_flag == 2) {
+    }
+    else if (g_SPI_RX_flag == 2)
+    {
         send_spi1((unsigned char) s16MesuredSpeed.s16_data_SPI);
-    } else if (g_SPI_RX_flag == 3) {
+    }
+    else if (g_SPI_RX_flag == 3)
+    {
         send_spi1(ACK_SLAVE);
     }
 }
 
-void Gestion_RW_Racceleration(void) {
-    if (g_SPI_RX_flag == 1) {
+void Gestion_RW_Racceleration(void)
+{
+    if (g_SPI_RX_flag == 1)
+    {
         ReadSharedVarS16_SPI(&s16MesuredAcceleration);
         send_spi1((unsigned char) (s16MesuredAcceleration.s16_data_SPI >> 8));
-    } else if (g_SPI_RX_flag == 2) {
+    }
+    else if (g_SPI_RX_flag == 2)
+    {
         send_spi1((unsigned char) s16MesuredAcceleration.s16_data_SPI);
-    } else if (g_SPI_RX_flag == 3) {
+    }
+    else if (g_SPI_RX_flag == 3)
+    {
         send_spi1(ACK_SLAVE);
     }
 }
 
-void Gestion_RW_Rcourant(void) {
-    if (g_SPI_RX_flag == 1) {
+void Gestion_RW_Rcourant(void)
+{
+    if (g_SPI_RX_flag == 1)
+    {
         ReadSharedVarU16_SPI(&u16MesuredCurrent);
         send_spi1((unsigned char) (u16MesuredCurrent.u16_data_SPI >> 8));
-    } else if (g_SPI_RX_flag == 2) {
+    }
+    else if (g_SPI_RX_flag == 2)
+    {
         send_spi1((unsigned char) u16MesuredCurrent.u16_data_SPI);
-    } else if (g_SPI_RX_flag == 3) {
+    }
+    else if (g_SPI_RX_flag == 3)
+    {
         send_spi1(ACK_SLAVE);
     }
 }
 
-void Gestion_RW_Rerreur(void) {
-    if (g_SPI_RX_flag == 1) {
+void Gestion_RW_Rerreur(void)
+{
+    if (g_SPI_RX_flag == 1)
+    {
         send_spi1(ACK_SLAVE);
     }
 }
 
-void Gestion_RW_Rconfig(void) {
-    if (g_SPI_RX_flag == 1) {
+void Gestion_RW_Rconfig(void)
+{
+    if (g_SPI_RX_flag == 1)
+    {
         ReadSharedVarU16_SPI(&u16KpNum);
         send_spi1((unsigned char) (u16KpNum.u16_data_SPI >> 8));
-    } else if (g_SPI_RX_flag == 2) {
+    }
+    else if (g_SPI_RX_flag == 2)
+    {
         send_spi1((unsigned char) (u16KpNum.u16_data_SPI));
-    } else if (g_SPI_RX_flag == 3) {
+    }
+    else if (g_SPI_RX_flag == 3)
+    {
         ReadSharedVarU16_SPI(&u16KpDenum);
         send_spi1((unsigned char) (u16KpDenum.u16_data_SPI >> 8));
-    } else if (g_SPI_RX_flag == 4) {
+    }
+    else if (g_SPI_RX_flag == 4)
+    {
         send_spi1((unsigned char) (u16KpDenum.u16_data_SPI));
-    } else if (g_SPI_RX_flag == 5) {
+    }
+    else if (g_SPI_RX_flag == 5)
+    {
         ReadSharedVarU16_SPI(&u16KiNum);
         send_spi1((unsigned char) (u16KiNum.u16_data_SPI >> 8));
-    } else if (g_SPI_RX_flag == 6) {
+    }
+    else if (g_SPI_RX_flag == 6)
+    {
         send_spi1((unsigned char) (u16KiNum.u16_data_SPI));
-    } else if (g_SPI_RX_flag == 7) {
+    }
+    else if (g_SPI_RX_flag == 7)
+    {
         ReadSharedVarU16_SPI(&u16KiDenum);
         send_spi1((unsigned char) (u16KiDenum.u16_data_SPI >> 8));
-    } else if (g_SPI_RX_flag == 8) {
+    }
+    else if (g_SPI_RX_flag == 8)
+    {
         send_spi1((unsigned char) (u16KiDenum.u16_data_SPI));
-    } else if (g_SPI_RX_flag == 9) {
+    }
+    else if (g_SPI_RX_flag == 9)
+    {
         ReadSharedVarU16_SPI(&u16KdNum);
         send_spi1((unsigned char) (u16KdNum.u16_data_SPI >> 8));
-    } else if (g_SPI_RX_flag == 10) {
+    }
+    else if (g_SPI_RX_flag == 10)
+    {
         send_spi1((unsigned char) (u16KdNum.u16_data_SPI));
-    } else if (g_SPI_RX_flag == 11) {
+    }
+    else if (g_SPI_RX_flag == 11)
+    {
         ReadSharedVarU16_SPI(&u16KdDenum);
         send_spi1((unsigned char) (u16KdDenum.u16_data_SPI >> 8));
-    } else if (g_SPI_RX_flag == 12) {
+    }
+    else if (g_SPI_RX_flag == 12)
+    {
         send_spi1((unsigned char) (u16KdDenum.u16_data_SPI));
-    } else if (g_SPI_RX_flag == 13) {
+    }
+    else if (g_SPI_RX_flag == 13)
+    {
         ReadSharedVarS32_SPI(&s32IErrorMax);
         send_spi1((unsigned char) (s32IErrorMax.s32_data_SPI >> 24));
-    } else if (g_SPI_RX_flag == 14) {
+    }
+    else if (g_SPI_RX_flag == 14)
+    {
         send_spi1((unsigned char) (s32IErrorMax.s32_data_SPI >> 16));
-    } else if (g_SPI_RX_flag == 15) {
+    }
+    else if (g_SPI_RX_flag == 15)
+    {
         send_spi1((unsigned char) (s32IErrorMax.s32_data_SPI >> 8));
-    } else if (g_SPI_RX_flag == 16) {
+    }
+    else if (g_SPI_RX_flag == 16)
+    {
         send_spi1((unsigned char) (s32IErrorMax.s32_data_SPI));
-    } else if (g_SPI_RX_flag == 17) {
+    }
+    else if (g_SPI_RX_flag == 17)
+    {
         send_spi1((unsigned char) (g_TimeOut_Recep));
-    } else if (g_SPI_RX_flag == 18) {
+    }
+    else if (g_SPI_RX_flag == 18)
+    {
         send_spi1((unsigned char) (g_timeMesureSpeed));
-    } else if (g_SPI_RX_flag == 19) {
+    }
+    else if (g_SPI_RX_flag == 19)
+    {
         send_spi1(ACK_SLAVE);
     }
 }
 
-void Gestion_RW_Rid(void) {
-    if (g_SPI_RX_flag == 1) {
+void Gestion_RW_Rid(void)
+{
+    if (g_SPI_RX_flag == 1)
+    {
         send_spi1(TYPE_CARD);
-    } else if (g_SPI_RX_flag == 2) {
+    }
+    else if (g_SPI_RX_flag == 2)
+    {
         send_spi1((unsigned char) (g_ID_board >> 24));
-    } else if (g_SPI_RX_flag == 3) {
+    }
+    else if (g_SPI_RX_flag == 3)
+    {
         send_spi1((unsigned char) (g_ID_board >> 16));
-    } else if (g_SPI_RX_flag == 4) {
+    }
+    else if (g_SPI_RX_flag == 4)
+    {
         send_spi1((unsigned char) (g_ID_board >> 8));
-    } else if (g_SPI_RX_flag == 5) {
+    }
+    else if (g_SPI_RX_flag == 5)
+    {
         send_spi1((unsigned char) g_ID_board);
-    } else if (g_SPI_RX_flag == 6) {
+    }
+    else if (g_SPI_RX_flag == 6)
+    {
         send_spi1(ACK_SLAVE);
     }
 }
 
-void Gestion_RW_Wmot_conf(void) {
-    if (g_SPI_RX_flag == 1) {
+void Gestion_RW_Wmot_conf(void)
+{
+    if (g_SPI_RX_flag == 1)
+    {
         g_interface_mesure_vitesse_SPI = g_SPI_RX_clearReg;
         send_spi1(0);
-    } else if (g_SPI_RX_flag == 2) {
+    }
+    else if (g_SPI_RX_flag == 2)
+    {
         u16ConfCodeurPPT.u16_data_SPI = (unsigned int) ((((unsigned int) g_SPI_RX_clearReg) << 8)&0xFF00);
         send_spi1(0);
-    } else if (g_SPI_RX_flag == 3) {
+    }
+    else if (g_SPI_RX_flag == 3)
+    {
         u16ConfCodeurPPT.u16_data_SPI |= (unsigned int) (((unsigned int) g_SPI_RX_clearReg)&0x00FF);
         send_spi1(0);
         WriteSharedVarU16_SPI(&u16ConfCodeurPPT);
-    } else if (g_SPI_RX_flag == 4) {
+    }
+    else if (g_SPI_RX_flag == 4)
+    {
         s16ConfMaxSpeed.s16_data_SPI = (signed int) ((((unsigned int) g_SPI_RX_clearReg) << 8)&0xFF00);
         send_spi1(0);
-    } else if (g_SPI_RX_flag == 5) {
+    }
+    else if (g_SPI_RX_flag == 5)
+    {
         s16ConfMaxSpeed.s16_data_SPI |= (signed int) (((unsigned int) g_SPI_RX_clearReg)&0x00FF);
         send_spi1(0);
         WriteSharedVarS16_SPI(&s16ConfMaxSpeed);
-    } else if (g_SPI_RX_flag == 6) {
+    }
+    else if (g_SPI_RX_flag == 6)
+    {
         u16ConfMaxCurrent.u16_data_SPI = (unsigned int) ((((unsigned int) g_SPI_RX_clearReg) << 8)&0xFF00);
         send_spi1(0);
-    } else if (g_SPI_RX_flag == 7) {
+    }
+    else if (g_SPI_RX_flag == 7)
+    {
         u16ConfMaxCurrent.u16_data_SPI |= (unsigned int) (((unsigned int) g_SPI_RX_clearReg)&0x00FF);
         send_spi1(ACK_SLAVE);
         WriteSharedVarU16_SPI(&u16ConfMaxCurrent);
     }
 }
 
-void Gestion_RW_Rmot_conf(void) {
-    if (g_SPI_RX_flag == 1) {
+void Gestion_RW_Rmot_conf(void)
+{
+    if (g_SPI_RX_flag == 1)
+    {
         send_spi1(g_interface_mesure_vitesse_SPI);
-    } else if (g_SPI_RX_flag == 2) {
+    }
+    else if (g_SPI_RX_flag == 2)
+    {
         ReadSharedVarU16_SPI(&u16ConfCodeurPPT);
         send_spi1((unsigned char) (u16ConfCodeurPPT.u16_data_SPI >> 8));
-    } else if (g_SPI_RX_flag == 3) {
+    }
+    else if (g_SPI_RX_flag == 3)
+    {
         send_spi1((unsigned char) (u16ConfCodeurPPT.u16_data_SPI));
-    } else if (g_SPI_RX_flag == 4) {
+    }
+    else if (g_SPI_RX_flag == 4)
+    {
         ReadSharedVarS16_SPI(&s16ConfMaxSpeed);
         send_spi1((unsigned char) s16ConfMaxSpeed.s16_data_SPI >> 8);
-    } else if (g_SPI_RX_flag == 5) {
+    }
+    else if (g_SPI_RX_flag == 5)
+    {
         send_spi1((unsigned char) (s16ConfMaxSpeed.s16_data_SPI));
-    } else if (g_SPI_RX_flag == 6) {
+    }
+    else if (g_SPI_RX_flag == 6)
+    {
         ReadSharedVarU16_SPI(&u16ConfMaxCurrent);
         send_spi1((unsigned char) (u16ConfMaxCurrent.u16_data_SPI >> 8));
-    } else if (g_SPI_RX_flag == 7) {
+    }
+    else if (g_SPI_RX_flag == 7)
+    {
         send_spi1((unsigned char) (u16ConfMaxCurrent.u16_data_SPI));
-    } else if (g_SPI_RX_flag == 8) {
+    }
+    else if (g_SPI_RX_flag == 8)
+    {
         send_spi1(ACK_SLAVE);
     }
 }
 
-void Gestion_LED(unsigned int freq) {
-    if (freq != 0) {
-        if (g_timer_led >= freq) {
+void Gestion_LED(unsigned int freq)
+{
+    if (freq != 0)
+    {
+        if (g_timer_led >= freq)
+        {
             g_timer_led = 0;
             LED = ~LED;
         }
     }
 }
 
-void Gestion_Courant(void) {
+void Gestion_Courant(void)
+{
     if ((g_stateAcq == 0) && (g_timer_AcqCourant >= 20)) //cadencé à 100us
     {
         g_timer_AcqCourant = 0;
         SetChanADC10(ADC_CSOUT); // Select the requested channel
         ADCON1bits.SAMP = 1; // start sampling
         g_stateAcq = 1;
-    } else if ((g_stateAcq == 1) && (g_timer_AcqCourant >= 1)) {
+    }
+    else if ((g_stateAcq == 1) && (g_timer_AcqCourant >= 1))
+    {
         ConvertADC10(); // start Converting
         g_stateAcq = 2;
-    } else if ((g_stateAcq == 2) && (ADCON1bits.DONE == 1)) {
+    }
+    else if ((g_stateAcq == 2) && (ADCON1bits.DONE == 1))
+    {
         u16MesuredCurrent.u16_data_APP += ReadADC10(0);
         g_nb_mes_courant++;
 
         g_stateAcq = 0;
-    } else if ((g_stateAcq == 0) && (g_nb_mes_courant >= 5)) {
+    }
+    else if ((g_stateAcq == 0) && (g_nb_mes_courant >= 5))
+    {
         // Somme des mesures de courant effectué diviser par le nb de mesures
         u16MesuredCurrent.u16_data_APP /= (unsigned long) g_nb_mes_courant;
         // Reset des variables necessaires à la nouvelles serie d'acquisition
@@ -684,58 +875,70 @@ void Gestion_Courant(void) {
         g_nb_mes_courant = 0;
     }
 }
-// Int2 interrupt service routine
 
-void __attribute__((interrupt, no_auto_psv)) _INT2Interrupt(void) {
+// Int2 interrupt service routine --------------------------------------------//
+void __attribute__((interrupt, no_auto_psv)) _INT2Interrupt(void)
+{
     _INT2IF = 0;
     g_pulse_drive++;
 }
-// Timer 1 interrupt service routine
 
-void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void) {
+// Timer 1 interrupt service routine -----------------------------------------//
+void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void)
+{
     WriteTimer1(0);
     _T1IF = 0;
     g_timerSpeed++;
     g_timerControl++;
 
-    if (g_timerSpeed >= g_timeMesureSpeed) {
+    if (g_timerSpeed >= g_timeMesureSpeed)
+    {
         g_timerSpeed = 0;
-        if (g_interface_mesure_vitesse_SPI == IV_CODEUR) {
+        if (g_interface_mesure_vitesse_SPI == IV_CODEUR)
+        {
             //recup position
             s32MotorPosition.s32_data_APP = (((signed long) g_motor_pos_H) << 15)+((signed long) ReadQEI());
             WriteSharedVarS32_SPI(&s32MotorPosition);
             //Determine le nombre de pas depuis la derniere acquisition
             g_motor_vitesse = s32MotorPosition.s32_data_APP - g_motor_pos_mem;
             //ramène en pas par seconde
-            g_motor_vitesse *= g_multi_timeMesureSpeed_s; 
+            g_motor_vitesse *= g_multi_timeMesureSpeed_s;
             //divise par 32 pour que ca entre dans int et le rende transportable
             ReadSharedVarU16_APP(&u16ConfCodeurPPT);
-            s16MesuredSpeed.s16_data_APP = (signed int)(g_motor_vitesse / (signed long)u16ConfCodeurPPT.u16_data_APP);   
-            WriteSharedVarS16_APP(&s16MesuredSpeed);  
+            s16MesuredSpeed.s16_data_APP = (signed int)(g_motor_vitesse / (signed long)u16ConfCodeurPPT.u16_data_APP);
+            WriteSharedVarS16_APP(&s16MesuredSpeed);
             //Sauvegarde de la valeur à soustraire pour la prochain calcul
-            g_motor_pos_mem = s32MotorPosition.s32_data_APP; 
-           
-        } else if(g_interface_mesure_vitesse_SPI == IV_TACHY){
+            g_motor_pos_mem = s32MotorPosition.s32_data_APP;
+
+        }
+        else if(g_interface_mesure_vitesse_SPI == IV_TACHY)
+        {
             s32MotorPosition.s32_data_APP = ((signed long) g_pulse_drive)*((signed long) g_multi_timeMesureSpeed_s);
             g_pulse_drive = 0;
             WriteSharedVarS32_SPI(&s32MotorPosition);
-            if (DRIVER_DIRO == 1)g_motor_vitesse *= -1;
+            if (DRIVER_DIRO == 1)
+                g_motor_vitesse *= -1;
             
             //RPS    driver = 24 pulses / tr
-            s16MesuredSpeed.s16_data_APP = (signed int) (g_motor_vitesse / 24); 
+            s16MesuredSpeed.s16_data_APP = (signed int) (g_motor_vitesse / 24);
 
             WriteSharedVarS16_APP(&s16MesuredSpeed);
-        } else {
-            g_Erreur_Cour++;           
+        }
+        else
+        {
+            g_Erreur_Cour++;
         }
     }
 
-    if (g_timerControl >= g_timeControlLoop) {
+    if (g_timerControl >= g_timeControlLoop)
+    {
         g_timerControl = 0;
         ReadSharedVarS32_APP(&s16SetpointSpeed);
-        if (g_flag_asser == LOOP) {
+
+        if (g_flag_asser == LOOP)
+        {
             // Erreur Proportionnelle
-            g_Erreur_P = ((signed long int)s16SetpointSpeed.s16_data_APP) - g_motor_vitesse; 
+            g_Erreur_P = ((signed long int)s16SetpointSpeed.s16_data_APP) - g_motor_vitesse;
             // Cumul Intégrale
             g_Erreur_I += g_Erreur_P;
             
@@ -746,19 +949,22 @@ void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void) {
             // Calcul Asservissement Ki
             ReadSharedVarU16_APP(&u16KiNum);
             ReadSharedVarU16_APP(&u16KiDenum);
-            g_dutycycle += g_Erreur_I * u16KiNum.u16_data_APP / u16KiDenum.u16_data_APP; 
-        } else {
+            g_dutycycle += g_Erreur_I * u16KiNum.u16_data_APP / u16KiDenum.u16_data_APP;
+        }
+        else
+        {
             g_dutycycle = ((signed long int)s16SetpointSpeed.s16_data_APP)*((signed long int)PWM_VAL_CENTRE);
         }
+
         g_dutycycle /= 1000;
         g_dutycycle += PWM_VAL_CENTRE;
         SetDCOC1PWM((unsigned int) (g_dutycycle));
     }
 }
 
-// Timer 2 interrupt service routine
-
-void __attribute__((interrupt, no_auto_psv)) _T2Interrupt(void) {
+// Timer 2 interrupt service routine -----------------------------------------//
+void __attribute__((interrupt, no_auto_psv)) _T2Interrupt(void)
+{
     WriteTimer2(0);
     _T2IF = 0;
     //Timer reglé sur 100us
@@ -766,9 +972,9 @@ void __attribute__((interrupt, no_auto_psv)) _T2Interrupt(void) {
 
 }
 
-// Timer 4 interrupt service routine
-
-void __attribute__((interrupt, no_auto_psv)) _T4Interrupt(void) {
+// Timer 4 interrupt service routine -----------------------------------------//
+void __attribute__((interrupt, no_auto_psv)) _T4Interrupt(void)
+{
     WriteTimer4(0);
     _T4IF = 0;
     //Timer reglé sur 100ms
@@ -782,78 +988,88 @@ void __attribute__((interrupt, no_auto_psv)) _T4Interrupt(void) {
 //}
 
 // SPI receive interrupt service routine
-
-void __attribute__((interrupt, no_auto_psv)) _SPI1Interrupt(void) {
+void __attribute__((interrupt, no_auto_psv)) _SPI1Interrupt(void)
+{
     _SPI1IF = 0;
-    if (SPI1STATbits.SPIROV) {
+    if (SPI1STATbits.SPIROV)
+    {
         SPI1STATbits.SPIROV = 0;
         g_Erreur_Cour++;
     }
 
-    while (DataRdySPI1()) {
+    while (DataRdySPI1())
+    {
         g_SPI_RX_clearReg = SPI1BUF;
-        if ((g_SPI_RX_flag == 0)) {
-            if ((g_SPI_RX_clearReg > 0)&&(g_SPI_RX_clearReg <= NB_FONCTION)) {
+        if ((g_SPI_RX_flag == 0))
+        {
+            if ((g_SPI_RX_clearReg > 0)&&(g_SPI_RX_clearReg <= NB_FONCTION))
+            {
                 send_spi1(g_Erreur_Cour);
                 g_SPI_RX_trame.commande = g_SPI_RX_clearReg;
                 g_SPI_RX_flag++; // si oui incremente l'etape de gestion rx
             }
         }// si non verifie les autres condition
-        else if (g_SPI_RX_flag >= 1 && g_SPI_RX_flag <= (g_SPI_RX_NbData[g_SPI_RX_trame.commande])) {
-            switch (g_SPI_RX_trame.commande) {
+        else if (g_SPI_RX_flag >= 1 && g_SPI_RX_flag <= (g_SPI_RX_NbData[g_SPI_RX_trame.commande]))
+        {
+            switch (g_SPI_RX_trame.commande)
+            {
                 case COM_W_CONSIGNE:
                     Gestion_RW_Wconsigne();
-                    break;
+                break;
                 case COM_W_MODE:
                     Gestion_RW_Wmode();
-                    break;
+                break;
                 case COM_W_POSITION:
                     Gestion_RW_Wposition();
-                    break;
+                break;
                 case COM_W_CONFIG:
                     Gestion_RW_Wconfig();
-                    break;
+                break;
                 case COM_R_POSITION:
                     Gestion_RW_Rposition();
-                    break;
+                break;
                 case COM_R_VITESSE:
                     Gestion_RW_Rvitesse();
-                    break;
+                break;
                 case COM_R_COURANT:
                     Gestion_RW_Rcourant();
-                    break;
+                break;
                 case COM_R_ERREUR:
                     Gestion_RW_Rerreur();
-                    break;
+                break;
                 case COM_R_CONFIG:
                     Gestion_RW_Rconfig();
-                    break;
+                break;
                 case COM_R_ID_BOARD:
                     Gestion_RW_Rid();
-                    break;
+                break;
                 case COM_W_MOT_CONF:
                     Gestion_RW_Wmot_conf();
-                    break;
+                break;
                 case COM_R_MOT_CONF:
                     Gestion_RW_Rmot_conf();
-                    break;
+                break;
             }
 
             g_SPI_RX_flag++; // increment du flag
-        } else if ((g_SPI_RX_flag == (g_SPI_RX_NbData[g_SPI_RX_trame.commande] + 1)) && g_SPI_RX_clearReg == ACK_MASTER) {
+        }
+        else if ((g_SPI_RX_flag == (g_SPI_RX_NbData[g_SPI_RX_trame.commande] + 1)) && g_SPI_RX_clearReg == ACK_MASTER)
+        {
             send_spi1(0); // si le dernier octet est le ender la trame est bonne
             //            g_SPI_RX_trame_valide=1;
             g_SPI_RX_flag = 0;
-        } else {
+        }
+        else
+        {
             send_spi1(0);
             g_SPI_RX_flag = 0;
         }
     }
 }
 
-void __attribute__((interrupt, no_auto_psv)) _QEIInterrupt(void) {
+void __attribute__((interrupt, no_auto_psv)) _QEIInterrupt(void)
+{
     _QEIIF = 0; /* Clear QEI interrupt flag */
     if (QEICONbits.UPDN)g_motor_pos_H++;
     else g_motor_pos_H--;
 }
-
