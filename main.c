@@ -333,7 +333,7 @@ void InitVariable(void)
     s16MesuredSpeed.s16_data_APP = 0;
     WriteSharedVarS16_APP(&s16MesuredSpeed);
     s16SetpointSpeed.s16_data_APP = 0;
-    WriteSharedVarS32_APP(&s16SetpointSpeed);
+    WriteSharedVarS16_APP(&s16SetpointSpeed);
     s32MotorPosition.s32_data_APP = 0;
     WriteSharedVarS32_APP(&s32MotorPosition);
 
@@ -386,7 +386,7 @@ void Gestion_RW_Wconsigne(void)
     {
         s16SetpointSpeed.s16_data_SPI |= (signed int) (((unsigned int) g_SPI_RX_clearReg)&0x00FF);
         send_spi1((unsigned char) (s32MotorPosition.s32_data_SPI >> 16));
-        WriteSharedVarS32_SPI(&s16SetpointSpeed);
+        WriteSharedVarS16_SPI(&s16SetpointSpeed);
     }
     else if (g_SPI_RX_flag == 3)
     {
@@ -947,7 +947,7 @@ void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void)
     if (g_timerControl >= g_timeControlLoop)
     {
         g_timerControl = 0;
-        ReadSharedVarS32_APP(&s16SetpointSpeed);
+        ReadSharedVarS16_APP(&s16SetpointSpeed);
 
         if (g_flag_asser == LOOP)
         {
