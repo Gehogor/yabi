@@ -3,7 +3,8 @@
 #ifndef MAIN_H
 #define	MAIN_H
 
-/**** Paramètres Carte d'axe****/
+
+// Inverter parameters -------------------------------------------------------//
 #define TYPE_CARD 0x01  //Carte d'axe Moteur Brushless
 //#define TYPE_CARD 0x02  //Carte d'axe Moteur CC
 //#define TYPE_CARD 0x03  //Carte d'axe Moteur Pas à Pas
@@ -12,12 +13,13 @@
 #define IV_CODEUR  1
 #define IV_TACHY   0
 
-/**** Paramètres généraux ****/
-#define FREQUENCY   117968000		//Fréquence de fonctionement xPLL16  =>  XTAL=7.373Mhz x16
+
+// Global parameters ---------------------------------------------------------//
+#define FREQUENCY   117968000       // Working frequence xPLL16 => XTAL=7.373Mhz x16
 #define TOSC_GENE   (1/FREQUENCY)
-#define TCY         0.000000033907      //(TOSC_GENE*4)
-#define FCY         29492000            //(1/TCY) ~30MIPS
-#define BAUD 115200				//Bibliothèque et paramètres pour la liaison RS232
+#define TCY         0.000000033907  // (TOSC_GENE*4)
+#define FCY         29492000        // (1/TCY) ~30MIPS
+#define BAUD 115200                 // RS232 parameters
 #define BRG ((FCY / (BAUD * 16))-1)
 
 #define TMRX_PRES_VAL_1     1
@@ -30,13 +32,13 @@
 #define TMRX_PRES_PARAM_64    2
 #define TMRX_PRES_PARAM_256   3
 
-#define PR_T1   29500       //1kHz
-#define PR_T2   2938        //10kHz
-#define PR_T3   1474        //20kHz
-#define PR_T4   11480       //10Hz
+#define PR_T1   29500       // 1kHz
+#define PR_T2   2938        // 10kHz
+#define PR_T3   1474        // 20kHz
+#define PR_T4   11480       // 10Hz
 
 
-/**** Paramètres Outout Compare ****/
+// PWM parameters ------------------------------------------------------------//
 //PWM Period = [(PRy) + 1] x TCY x (TMRy Prescale Value)
 //PWM Frequency = 1/[PWM Period]
 #define PWM_FREQ    20000
@@ -50,7 +52,8 @@
 
 #define PRX_REG     (PWM_PER/(TCY*PWM_PRES_VAL))
 
-/**** Paramètres I/O ****/
+
+// IO parameters -------------------------------------------------------------//
 #define DRIVER_MODE     _LATE1
 #define DRIVER_DIR      _LATE2
 #define DRIVER_COAST	_LATE3
@@ -83,8 +86,8 @@
 #define LED_ON  0
 #define LED_OFF 1
 
-/**** Paramètres USART ****/
 
+// UART parameters -----------------------------------------------------------//
 #define ACK_MASTER 0x5E
 #define ACK_SLAVE  0xE5
 
@@ -102,26 +105,25 @@
 #define COM_W_MOT_CONF      0x0C
 #define COM_R_MOT_CONF      0x0D
 
-#define DATA_W_CONSIGNE      11
 #define DATA_W_MODE          1
-#define DATA_W_POSITION      4
-#define DATA_W_CONFIG        18
-#define DATA_R_POSITION      5
+#define DATA_R_ERREUR        1
 #define DATA_R_VITESSE       3
 #define DATA_R_ACCELERATION  3
 #define DATA_R_COURANT       3
-#define DATA_R_ERREUR        1
-#define DATA_R_CONFIG        19
+#define DATA_W_POSITION      4
+#define DATA_R_POSITION      5
 #define DATA_R_ID_BOARD      6
 #define DATA_W_MOT_CONF      7
 #define DATA_R_MOT_CONF      8
+#define DATA_W_CONSIGNE      11
+#define DATA_W_CONFIG        18
+#define DATA_R_CONFIG        19
 
 #define NB_FONCTION          13
-
 #define COM_ERREUR_FUNC_UNCKNOW     0xF6
 
-/**** Machine à état de la carte Yabi ******/
 
+// Mode of state machine -----------------------------------------------------//
 #define MODE_STOP      0x00
 #define MODE_OPEN      0x01
 #define MODE_ASSER     0x02
@@ -132,15 +134,17 @@
 #define OPEN    0x01
 #define LOOP    0x02
 
-// Déclaration Structures 
 
-typedef struct //Struct trame de transmission
+// Structures ----------------------------------------------------------------//
+// Data communication for SPI.
+typedef struct
 {
     unsigned char commande;
     unsigned char data[25];
 } trame_SPI;
 
-// Function prototype for Timer 1 interrupt service routine
+
+// Interupt functions --------------------------------------------------------//
 void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void);
 void __attribute__((interrupt, no_auto_psv)) _T2Interrupt(void);
 //void __attribute__((interrupt, no_auto_psv)) _T3Interrupt(void)
@@ -152,6 +156,7 @@ void __attribute__((interrupt, no_auto_psv)) _QEIInterrupt(void);
 void __attribute__((interrupt, no_auto_psv)) _INT2Interrupt(void);
 
 
+// Functions -----------------------------------------------------------------//
 void Configure_pins(void);
 void InitFonctionRecep(void);
 void InitDriver(void);
@@ -177,4 +182,3 @@ void send_spi1(unsigned int mtdata);
 void InitVariable(void);
 
 #endif	/* DRIVER_DSPIC_H */
-
