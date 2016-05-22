@@ -36,7 +36,7 @@ signed long g_motor_pos_mem = 0;
 signed long g_motor_vitesse = 0;
 
 signed long g_dutycycle = 0;
-signed long g_pulse_drive = 0;
+unsigned long g_pulse_drive = 0;
 
 unsigned long g_mesure_courant = 0;
 unsigned char g_stateAcq = 0, g_nb_mes_courant = 0;
@@ -95,7 +95,7 @@ s32_shared_var s32IErrorMax;
 u16_shared_var u16MesuredCurrent;
 s16_shared_var s16MesuredAcceleration;
 s16_shared_var s16MesuredSpeed;
-s32_shared_var s32SetpointSpeed;
+s16_shared_var s16SetpointSpeed;
 s32_shared_var s32MotorPosition;
 
 //Variables partagées info fonctionnement moteur
@@ -312,8 +312,8 @@ void InitVariable(void) {
     WriteSharedVarS16_APP(&s16MesuredAcceleration);
     s16MesuredSpeed.s16_data_APP = 0;
     WriteSharedVarS16_APP(&s16MesuredSpeed);
-    s32SetpointSpeed.s32_data_APP = 0;
-    WriteSharedVarS32_APP(&s32SetpointSpeed);
+    s16SetpointSpeed.s16_data_APP = 0;
+    WriteSharedVarS32_APP(&s16SetpointSpeed);
     s32MotorPosition.s32_data_APP = 0;
     WriteSharedVarS32_APP(&s32MotorPosition);
 
@@ -354,12 +354,12 @@ void send_spi1(unsigned int mtdata) {
 void Gestion_RW_Wconsigne(void) {
     if (g_SPI_RX_flag == 1) {
         ReadSharedVarS32_SPI(&s32MotorPosition);
-        s32SetpointSpeed.s32_data_SPI = (signed int) ((((unsigned int) g_SPI_RX_clearReg) << 8)&0xFF00);
+        s16SetpointSpeed.s16_data_SPI = (signed int) ((((unsigned int) g_SPI_RX_clearReg) << 8)&0xFF00);
         send_spi1((unsigned char) (s32MotorPosition.s32_data_SPI >> 24));
     } else if (g_SPI_RX_flag == 2) {
-        s32SetpointSpeed.s32_data_SPI |= (signed int) (((unsigned int) g_SPI_RX_clearReg)&0x00FF);
+        s16SetpointSpeed.s16_data_SPI |= (signed int) (((unsigned int) g_SPI_RX_clearReg)&0x00FF);
         send_spi1((unsigned char) (s32MotorPosition.s32_data_SPI >> 16));
-        WriteSharedVarS32_SPI(&s32SetpointSpeed);
+        WriteSharedVarS32_SPI(&s16SetpointSpeed);
     } else if (g_SPI_RX_flag == 3) {
         send_spi1((unsigned char) (s32MotorPosition.s32_data_SPI >> 8));
     } else if (g_SPI_RX_flag == 4) {
@@ -694,7 +694,6 @@ void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void) {
 
     if (g_timerSpeed >= g_timeMesureSpeed) {
         g_timerSpeed = 0;
-
         if (g_interface_mesure_vitesse_SPI == IV_CODEUR) {
             //recup position
             s32MotorPosition.s32_data_APP = (((signed long) g_motor_pos_H) << 15)+((signed long) ReadQEI());
@@ -718,7 +717,7 @@ void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void) {
             
             //RPS    driver = 24 pulses / tr
             s16MesuredSpeed.s16_data_APP = (signed int) (g_motor_vitesse / 24); 
-            
+
             WriteSharedVarS16_APP(&s16MesuredSpeed);
         } else {
             g_Erreur_Cour++;           
@@ -727,11 +726,10 @@ void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void) {
 
     if (g_timerControl >= g_timeControlLoop) {
         g_timerControl = 0;
-
-        ReadSharedVarS32_APP(&s32SetpointSpeed);
+        ReadSharedVarS32_APP(&s16SetpointSpeed);
         if (g_flag_asser == LOOP) {
             // Erreur Proportionnelle
-            g_Erreur_P = (s32SetpointSpeed.s32_data_APP) - g_motor_vitesse; 
+            g_Erreur_P = ((signed long int)s16SetpointSpeed.s16_data_APP) - g_motor_vitesse; 
             // Cumul Intégrale
             g_Erreur_I += g_Erreur_P;
             
@@ -744,7 +742,7 @@ void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void) {
             ReadSharedVarU16_APP(&u16KiDenum);
             g_dutycycle += g_Erreur_I * u16KiNum.u16_data_APP / u16KiDenum.u16_data_APP; 
         } else {
-            g_dutycycle = s32SetpointSpeed.s32_data_APP*PWM_VAL_CENTRE;
+            g_dutycycle = ((signed long int)s16SetpointSpeed.s16_data_APP)*((signed long int)PWM_VAL_CENTRE);
         }
         g_dutycycle /= 1000;
         g_dutycycle += PWM_VAL_CENTRE;
