@@ -8,7 +8,6 @@
 #ifndef SHAREDVARLIB_H
 #define	SHAREDVARLIB_H
 
-
 #define LOCK    1
 #define UNLOCK  0
 
@@ -85,4 +84,3 @@ void WriteSharedVarS32_SPI(s32_shared_var *pt_s32ShVar);
 void ReadSharedVarS32_SPI(s32_shared_var *pt_s32ShVar);
 
 #endif	/* SHAREDVARLIB_H */
-
