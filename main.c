@@ -17,10 +17,13 @@
 #include "main.h"
 #include "SharedVarLib.h"
 
+
 unsigned long g_ID_board = 43981;
 
 // Global timer variable
-unsigned int g_timerSpeed = 0, g_timer_AcqCourant = 0, g_timer_led = 0;
+unsigned int g_timerSpeed = 0;
+unsigned int g_timer_AcqCourant = 0;
+unsigned int g_timer_led = 0;
 unsigned int g_timerControl = 0;
 
 unsigned int g_multi_timeMesureSpeed_s = 0;
@@ -28,7 +31,9 @@ unsigned char g_flag_asser = OPEN;
 unsigned char g_var_led = LED_FREQ_5HZ;
 
 trame_SPI g_SPI_RX_trame;
-unsigned char g_SPI_RX_flag = 0, g_SPI_RX_trame_valide = 0, g_SPI_RX_clearReg = 0;
+unsigned char g_SPI_RX_flag = 0;
+unsigned char g_SPI_RX_trame_valide = 0;
+unsigned char g_SPI_RX_clearReg = 0;
 unsigned char g_SPI_RX_NbData[NB_FONCTION + 1];
 
 signed int g_motor_pos_H = 0;
@@ -39,12 +44,15 @@ signed long g_dutycycle = 0;
 unsigned long g_pulse_drive = 0;
 
 unsigned long g_mesure_courant = 0;
-unsigned char g_stateAcq = 0, g_nb_mes_courant = 0;
+unsigned char g_stateAcq = 0;
+unsigned char g_nb_mes_courant = 0;
 
-signed long g_Erreur_P = 0, g_Erreur_I = 0;
+signed long g_Erreur_P = 0;
+signed long g_Erreur_I = 0;
 
 //Initialisation du Mode (Mode_mem diffÃ©rent pour lancer l'init du mode Stop)
-unsigned char g_mode, g_mode_mem;
+unsigned char g_mode;
+unsigned char g_mode_mem;
 
 signed long g_motor_pos_APP = 0;
 signed long g_vitesse_desiree_APP = 0;
@@ -81,8 +89,8 @@ signed int g_Acceleration_Cour_SPI = 0;
 signed int g_Vitesse_Cour_SPI = 0;
 */
 
-//Variables partagées info driver
-//u8_shared_var u8ControlMode; Pas utilisé pour l'intant
+//Variables partagÃ©es info driver
+//u8_shared_var u8ControlMode; Pas utilisÃ© pour l'intant
 u16_shared_var u16KpNum;
 u16_shared_var u16KpDenum;
 u16_shared_var u16KiNum;
@@ -91,31 +99,25 @@ u16_shared_var u16KdNum;
 u16_shared_var u16KdDenum;
 s32_shared_var s32IErrorMax;
 
-//Variables partagées info fonctionnement moteur
+//Variables partagÃ©es info fonctionnement moteur
 u16_shared_var u16MesuredCurrent;
 s16_shared_var s16MesuredAcceleration;
 s16_shared_var s16MesuredSpeed;
 s16_shared_var s16SetpointSpeed;
 s32_shared_var s32MotorPosition;
 
-//Variables partagées info fonctionnement moteur
-//Variables partagées parametres PID
+//Variables partagÃ©es info fonctionnement moteur
+//Variables partagÃ©es parametres PID
 
-//Variables partagées parametres Moteur
+//Variables partagÃ©es parametres Moteur
 u16_shared_var u16ConfCodeurPPT;
 u16_shared_var u16ConfMaxCurrent;
 s16_shared_var s16ConfMaxSpeed;
 
 int main() {
-    // Set up which pins are which
     Configure_pins();
-
     InitDriver();
-
     InitFonctionRecep();
-
-    //Récupération des parametres dans l'eeprom    
-
     InitVariable();
     
     g_timeMesureSpeed = 10;
@@ -169,9 +171,11 @@ int main() {
     return 0;
 }
 
-void Configure_pins() {
+void Configure_pins()
+{
     ADPCFG = 0xFFFC;
-    // Configure digital I/O
+
+    // Digital I/O configuration.
     PORTB = 0;
     LATB = 0;
     TRISB = 0xFFFF;
@@ -192,7 +196,7 @@ void Configure_pins() {
     LATF = 0;
     TRISF = 0xFFFB;
 
-    //      Config & Réglage Timer1 à  1khz
+    // Timer1 configuration (1khz).
     ConfigIntTimer1(T1_INT_PRIOR_5 & T1_INT_ON);
     WriteTimer1(0);
     OpenTimer1( T1_ON & 
@@ -203,19 +207,19 @@ void Configure_pins() {
             T1_SOURCE_INT, 
             PR_T1);
 
-    //      Config & Réglage Timer2 à  10khz
+    // Timer2 configuration (10khz).
     ConfigIntTimer2(T2_INT_PRIOR_3 & T2_INT_ON);
     WriteTimer2(0);
     OpenTimer2( T2_ON & T2_IDLE_STOP & T2_GATE_OFF & T2_PS_1_1 & T2_SOURCE_INT,
                 PR_T2);
 
-    //      Config & Réglage Timer4 à  10hz
+    // Timer4 configuration (10hz).
     ConfigIntTimer4(T4_INT_PRIOR_1 & T4_INT_ON);
     WriteTimer4(0);
     OpenTimer4( T4_ON & T4_IDLE_STOP & T4_GATE_OFF & T4_PS_1_256 & 
                 T4_SOURCE_INT, PR_T4);
 
-    //      Config SPI   
+    // SPI configuration.
     CloseSPI1();
     ConfigIntSPI1(SPI_INT_EN & SPI_INT_PRI_7);
     OpenSPI1(FRAME_ENABLE_OFF & FRAME_SYNC_INPUT & ENABLE_SDO_PIN &
@@ -224,14 +228,14 @@ void Configure_pins() {
             PRI_PRESCAL_64_1, SPI_ENABLE & SPI_IDLE_CON & SPI_RX_OVFLOW_CLR);
     _SPIROV = 0;
 
-    //      Config PWM
+    // PWM configuration.
     OpenTimer3( T3_ON & T3_IDLE_STOP & T3_GATE_OFF & T3_PS_1_1 & T3_SOURCE_INT,
                 PR_T3);
     ConfigIntOC1(OC_INT_OFF & OC_INT_PRIOR_4);
     OpenOC1(OC_IDLE_CON & OC_TIMER3_SRC & OC_PWM_FAULT_PIN_DISABLE, 0, 0);
     SetDCOC1PWM(0);
 
-    //      Config ADC
+    // ADC configuration.
     SetChanADC10(ADC_CH0_POS_SAMPLEA_AN0 & ADC_CH0_NEG_SAMPLEA_NVREF);
     ConfigIntADC10(ADC_INT_DISABLE);
     OpenADC10(  ADC_MODULE_ON & ADC_IDLE_CONTINUE & ADC_FORMAT_INTG & 
@@ -243,8 +247,7 @@ void Configure_pins() {
                 ENABLE_AN0_ANA & ENABLE_AN1_ANA,
                 SKIP_SCAN_AN2 & SKIP_SCAN_AN3 & SKIP_SCAN_AN4 & SKIP_SCAN_AN5);
 
-    //      Config QEI
-
+    // QEI configuration.
     ConfigIntQEI(QEI_INT_PRI_6 & QEI_INT_ENABLE);
     POSCNT = 0;
     MAXCNT = 0x7FFF;
@@ -260,7 +263,8 @@ void Configure_pins() {
                 GLOBAL_INT_ENABLE);
 }
 
-void InitFonctionRecep(void) {
+void InitFonctionRecep(void)
+{
     g_SPI_RX_NbData[COM_W_CONSIGNE] = DATA_W_CONSIGNE;
     g_SPI_RX_NbData[COM_W_MODE] = DATA_W_MODE;
     g_SPI_RX_NbData[COM_W_POSITION] = DATA_W_POSITION;
@@ -276,13 +280,15 @@ void InitFonctionRecep(void) {
     g_SPI_RX_NbData[COM_R_MOT_CONF] = DATA_R_MOT_CONF;
 }
 
-void InitDriver(void) {
+void InitDriver(void)
+{
     DRIVER_MODE = 0;
     DRIVER_COAST = 0;
     DRIVER_DIR = 1;
 }
 
-void InitVariable(void) {
+void InitVariable(void)
+{
     g_mode = MODE_STOP;
     g_mode_mem = MODE_OPEN;
     
@@ -326,14 +332,14 @@ void InitVariable(void) {
     
     s32IErrorMax.s32_data_APP = 0;
     WriteSharedVarS32_APP(&s32IErrorMax);
-
 }
 
-unsigned int read_analog_channel(int channel) {
-    SetChanADC10(channel); // Select the requested channel
-    ADCON1bits.SAMP = 1; // start sampling
-    __delay32(30); // 1us delay @ 30 MIPS
-    ConvertADC10(); // start Converting
+unsigned int read_analog_channel(int channel)
+{
+    SetChanADC10(channel);  // Select the requested channel.
+    ADCON1bits.SAMP = 1;    // Start sampling.
+    __delay32(30);          // 1us delay @ 30 MIPS.
+    ConvertADC10();         // Start converting.
     while (BusyADC10());
     return ReadADC10(0);
 }
@@ -655,7 +661,7 @@ void Gestion_LED(unsigned int freq) {
 }
 
 void Gestion_Courant(void) {
-    if ((g_stateAcq == 0) && (g_timer_AcqCourant >= 20)) //cadencé à 100us
+    if ((g_stateAcq == 0) && (g_timer_AcqCourant >= 20)) //cadencÃ© Ã  100us
     {
         g_timer_AcqCourant = 0;
         SetChanADC10(ADC_CSOUT); // Select the requested channel
@@ -670,9 +676,9 @@ void Gestion_Courant(void) {
 
         g_stateAcq = 0;
     } else if ((g_stateAcq == 0) && (g_nb_mes_courant >= 5)) {
-        // Somme des mesures de courant effectué diviser par le nb de mesures
+        // Somme des mesures de courant effectuÃ© diviser par le nb de mesures
         u16MesuredCurrent.u16_data_APP /= (unsigned long) g_nb_mes_courant;
-        // Reset des variables necessaires à la nouvelles serie d'acquisition
+        // Reset des variables necessaires Ã  la nouvelles serie d'acquisition
         WriteSharedVarU16_APP(&u16MesuredCurrent);
         u16MesuredCurrent.u16_data_APP = 0;
         g_nb_mes_courant = 0;
@@ -700,13 +706,13 @@ void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void) {
             WriteSharedVarS32_SPI(&s32MotorPosition);
             //Determine le nombre de pas depuis la derniere acquisition
             g_motor_vitesse = s32MotorPosition.s32_data_APP - g_motor_pos_mem;
-            //ramène en pas par seconde
+            //ramÃ¨ne en pas par seconde
             g_motor_vitesse *= g_multi_timeMesureSpeed_s; 
             //divise par 32 pour que ca entre dans int et le rende transportable
             ReadSharedVarU16_APP(&u16ConfCodeurPPT);
             s16MesuredSpeed.s16_data_APP = (signed int)(g_motor_vitesse / (signed long)u16ConfCodeurPPT.u16_data_APP);   
             WriteSharedVarS16_APP(&s16MesuredSpeed);  
-            //Sauvegarde de la valeur à soustraire pour la prochain calcul
+            //Sauvegarde de la valeur Ã  soustraire pour la prochain calcul
             g_motor_pos_mem = s32MotorPosition.s32_data_APP; 
            
         } else if(g_interface_mesure_vitesse_SPI == IV_TACHY){
@@ -730,7 +736,7 @@ void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void) {
         if (g_flag_asser == LOOP) {
             // Erreur Proportionnelle
             g_Erreur_P = ((signed long int)s16SetpointSpeed.s16_data_APP) - g_motor_vitesse; 
-            // Cumul Intégrale
+            // Cumul IntÃ©grale
             g_Erreur_I += g_Erreur_P;
             
             // Calcul Asservissement Kp
@@ -755,7 +761,7 @@ void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void) {
 void __attribute__((interrupt, no_auto_psv)) _T2Interrupt(void) {
     WriteTimer2(0);
     _T2IF = 0;
-    //Timer reglé sur 100us
+    //Timer reglÃ© sur 100us
     g_timer_AcqCourant++;
 
 }
@@ -765,7 +771,7 @@ void __attribute__((interrupt, no_auto_psv)) _T2Interrupt(void) {
 void __attribute__((interrupt, no_auto_psv)) _T4Interrupt(void) {
     WriteTimer4(0);
     _T4IF = 0;
-    //Timer reglé sur 100ms
+    //Timer reglÃ© sur 100ms
     g_timer_led++;
 }
 
