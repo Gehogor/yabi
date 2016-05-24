@@ -927,15 +927,17 @@ void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void)
         }
         else if(g_interface_mesure_vitesse_SPI == IV_TACHY)
         {
-            s32MotorPosition.s32_data_APP = ((signed long) g_pulse_drive)*((signed long) g_multi_timeMesureSpeed_s);
-            g_pulse_drive = 0;
-            WriteSharedVarS32_SPI(&s32MotorPosition);
+//            s32MotorPosition.s32_data_APP = ((signed long) g_pulse_drive)*((signed long) g_multi_timeMesureSpeed_s);
+//            g_pulse_drive = 0;
+//            WriteSharedVarS32_SPI(&s32MotorPosition);
+//            s16MesuredSpeed.s16_data_APP = 11;
+            g_motor_vitesse = ((signed long) g_pulse_drive)*((signed long) g_multi_timeMesureSpeed_s);
             if (DRIVER_DIRO == 1)
                 g_motor_vitesse *= -1;
             
             //RPS    driver = 24 pulses / tr
             s16MesuredSpeed.s16_data_APP = (signed int) (g_motor_vitesse / 24);
-
+            
             WriteSharedVarS16_APP(&s16MesuredSpeed);
         }
         else
