@@ -305,47 +305,31 @@ void InitVariable(void)
 {
     g_mode = MODE_STOP;
     g_mode_mem = MODE_OPEN;
+
+    InitSharedVarU16(&u16MesuredCurrent, 0);
     
-    u16MesuredCurrent.u16_data_APP = 0;
-    WriteSharedVarU16_APP(&u16MesuredCurrent);
+    InitSharedVarU16(&u16KpNum, 1);
+    InitSharedVarU16(&u16KpDenum, 2000);
     
-    u16KpNum.u16_data_APP = 2;
-    WriteSharedVarU16_APP(&u16KpNum);
-    u16KpDenum.u16_data_APP = 4000;
-    WriteSharedVarU16_APP(&u16KpDenum);
-    
-    u16KiNum.u16_data_APP = 2;
-    WriteSharedVarU16_APP(&u16KiNum);
-    u16KiDenum.u16_data_APP = 9000;
-    WriteSharedVarU16_APP(&u16KiDenum);
-    
-    u16KdNum.u16_data_APP = 2;
-    WriteSharedVarU16_APP(&u16KdNum);
-    u16KdDenum.u16_data_APP = 2;
-    WriteSharedVarU16_APP(&u16KdDenum);
+    InitSharedVarU16(&u16KiNum, 1);
+    InitSharedVarU16(&u16KiDenum, 4500);
+
+    InitSharedVarU16(&u16KdNum, 1);
+    InitSharedVarU16(&u16KdDenum, 1);
     
     g_interface_mesure_vitesse_SPI = IV_TACHY;
-    
-    u16MesuredCurrent.u16_data_APP = 0;
-    WriteSharedVarU16_APP(&u16MesuredCurrent);
-    s16MesuredAcceleration.s16_data_APP = 0;
-    WriteSharedVarS16_APP(&s16MesuredAcceleration);
-    s16MesuredSpeed.s16_data_APP = 0;
-    WriteSharedVarS16_APP(&s16MesuredSpeed);
-    s16SetpointSpeed.s16_data_APP = 0;
-    WriteSharedVarS16_APP(&s16SetpointSpeed);
-    s32MotorPosition.s32_data_APP = 0;
-    WriteSharedVarS32_APP(&s32MotorPosition);
 
-    u16ConfCodeurPPT.u16_data_APP = 0;
-    WriteSharedVarU16_APP(&u16ConfCodeurPPT);
-    u16ConfMaxCurrent.u16_data_APP = 2329;
-    WriteSharedVarU16_APP(&u16ConfMaxCurrent);
-    s16ConfMaxSpeed.s16_data_APP = 110;
-    WriteSharedVarS16_APP(&s16ConfMaxSpeed);
-    
-    s32IErrorMax.s32_data_APP = 0;
-    WriteSharedVarS32_APP(&s32IErrorMax);
+    InitSharedVarU16(&u16MesuredCurrent, 0);
+    InitSharedVarS16(&s16MesuredAcceleration, 0);
+    InitSharedVarS16(&s16MesuredSpeed, 0);
+    InitSharedVarS16(&s16SetpointSpeed, 0);
+    InitSharedVarS32(&s32MotorPosition, 0);
+
+    InitSharedVarU16(&u16ConfCodeurPPT, 0);
+    InitSharedVarU16(&u16ConfMaxCurrent, 2330);
+    InitSharedVarS16(&s16ConfMaxSpeed, 111);
+
+    InitSharedVarS32(&s32IErrorMax, 0);
 }
 
 unsigned int read_analog_channel(int channel)
@@ -927,16 +911,14 @@ void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void)
         }
         else if(g_interface_mesure_vitesse_SPI == IV_TACHY)
         {
-//            s32MotorPosition.s32_data_APP = ((signed long) g_pulse_drive)*((signed long) g_multi_timeMesureSpeed_s);
-//            g_pulse_drive = 0;
-//            WriteSharedVarS32_SPI(&s32MotorPosition);
-//            s16MesuredSpeed.s16_data_APP = 11;
             g_motor_vitesse = ((signed long) g_pulse_drive)*((signed long) g_multi_timeMesureSpeed_s);
+            g_pulse_drive = 0;
             if (DRIVER_DIRO == 1)
                 g_motor_vitesse *= -1;
             
             //RPS    driver = 24 pulses / tr
-            s16MesuredSpeed.s16_data_APP = (signed int) (g_motor_vitesse / 24);
+        //    g_motor_vitesse /= 24;
+            s16MesuredSpeed.s16_data_APP = ((signed int)g_motor_vitesse)/24;
             
             WriteSharedVarS16_APP(&s16MesuredSpeed);
         }
@@ -955,7 +937,7 @@ void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void)
         {
             // Erreur Proportionnelle
             g_Erreur_P = ((signed long int)s16SetpointSpeed.s16_data_APP) - g_motor_vitesse;
-            // Cumul IntÃ©grale
+            // Cumul Intégrale
             g_Erreur_I += g_Erreur_P;
             
             // Calcul Asservissement Kp
@@ -965,7 +947,7 @@ void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void)
             // Calcul Asservissement Ki
             ReadSharedVarU16_APP(&u16KiNum);
             ReadSharedVarU16_APP(&u16KiDenum);
-            g_dutycycle += g_Erreur_I * u16KiNum.u16_data_APP / u16KiDenum.u16_data_APP;
+        //    g_dutycycle += g_Erreur_I * u16KiNum.u16_data_APP / u16KiDenum.u16_data_APP;
         }
         else
         {
