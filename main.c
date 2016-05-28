@@ -896,7 +896,7 @@ void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void)
         {
             //recup position
             s32MotorPosition.s32_data_APP = (((signed long) g_motor_pos_H) << 15)+((signed long) ReadQEI());
-            WriteSharedVarS32_SPI(&s32MotorPosition);
+            WriteSharedVarS32_APP(&s32MotorPosition);
             //Determine le nombre de pas depuis la derniere acquisition
             g_motor_vitesse = s32MotorPosition.s32_data_APP - g_motor_pos_mem;
             //ramÃ¨ne en pas par seconde
@@ -917,9 +917,8 @@ void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void)
                 g_motor_vitesse *= -1;
             
             //RPS    driver = 24 pulses / tr
-        //    g_motor_vitesse /= 24;
-            s16MesuredSpeed.s16_data_APP = ((signed int)g_motor_vitesse)/24;
-            
+//            g_motor_vitesse /= 24;
+            s16MesuredSpeed.s16_data_APP = (signed int)(g_motor_vitesse/24);// /24);          
             WriteSharedVarS16_APP(&s16MesuredSpeed);
         }
         else
@@ -931,12 +930,13 @@ void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void)
     if (g_timerControl >= g_timeControlLoop)
     {
         g_timerControl = 0;
-        ReadSharedVarS16_APP(&s16SetpointSpeed);
-
+        
         if (g_flag_asser == LOOP)
         {
             // Erreur Proportionnelle
+            ReadSharedVarS16_APP(&s16SetpointSpeed);
             g_Erreur_P = ((signed long int)s16SetpointSpeed.s16_data_APP) - g_motor_vitesse;
+
             // Cumul Intégrale
             g_Erreur_I += g_Erreur_P;
             
@@ -947,15 +947,23 @@ void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void)
             // Calcul Asservissement Ki
             ReadSharedVarU16_APP(&u16KiNum);
             ReadSharedVarU16_APP(&u16KiDenum);
-        //    g_dutycycle += g_Erreur_I * u16KiNum.u16_data_APP / u16KiDenum.u16_data_APP;
+            g_dutycycle += g_Erreur_I * u16KiNum.u16_data_APP / u16KiDenum.u16_data_APP;
+            
+            g_dutycycle *= (signed long int)PWM_VAL_CENTRE;
         }
         else
         {
-            g_dutycycle = ((signed long int)s16SetpointSpeed.s16_data_APP)*((signed long int)PWM_VAL_CENTRE);
+            ReadSharedVarS16_APP(&s16SetpointSpeed);
+            g_dutycycle  = ((signed long int)s16SetpointSpeed.s16_data_APP);
+            g_dutycycle *= ((signed long int)PWM_VAL_CENTRE);           
         }
 
         g_dutycycle /= 1000;
         g_dutycycle += PWM_VAL_CENTRE;
+        
+        s16MesuredAcceleration.s16_data_APP = (unsigned int)g_dutycycle;
+        WriteSharedVarS16_APP(&s16MesuredAcceleration);
+
         SetDCOC1PWM((unsigned int) (g_dutycycle));
     }
 }
