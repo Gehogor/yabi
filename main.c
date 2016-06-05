@@ -22,7 +22,6 @@
 #include <timer.h>
 #include <uart.h>
 #include <qei.h>
-#include <xc.h>
 
 // Standard
 #include <stdio.h>
@@ -31,7 +30,6 @@
 #include "Config.h"
 #include "main.h"
 #include "SharedVarLib.h"
-#include "EepromLib.h"
 
 
 unsigned long g_ID_board = 43981;
@@ -57,7 +55,7 @@ signed long g_motor_pos_mem = 0;
 signed long g_motor_vitesse = 0;
 
 signed long g_dutycycle = 0;
-signed long g_pulse_drive = 0;
+unsigned long g_pulse_drive = 0;
 
 unsigned long g_mesure_courant = 0;
 unsigned char g_stateAcq = 0;
@@ -74,7 +72,7 @@ signed long g_motor_pos_APP = 0;
 signed long g_vitesse_desiree_APP = 0;
 signed int g_Vitesse_Cour = 0;
 
-signed long g_timePrecision = 0;
+unsigned char g_timeMesureSpeed = 0;
 unsigned char g_timeControlLoop = 0;
 
 unsigned char g_TimeOut_Recep = 0;
@@ -137,8 +135,9 @@ int main()
     InitFonctionRecep();
     InitVariable();
     
-    g_timePrecision = 10;
-    g_multi_timeMesureSpeed_s = 1000 / ((unsigned int) g_timePrecision);
+    g_timeMesureSpeed = 10;
+    g_multi_timeMesureSpeed_s = 1000 / ((unsigned int) g_timeMesureSpeed);
+    g_timeControlLoop = g_timeMesureSpeed;
 
     LED = LED_OFF;
 
@@ -304,16 +303,14 @@ void InitDriver(void)
 
 void InitVariable(void)
 {
-    unsigned char u8TabTmpVar[4];
-    unsigned int u16TmpVar = 0;
     g_mode = MODE_STOP;
     g_mode_mem = MODE_OPEN;
 
     InitSharedVarU16(&u16MesuredCurrent, 0);
-  
+    
     InitSharedVarU16(&u16KpNum, 1);
     InitSharedVarU16(&u16KpDenum, 2000);
-     
+    
     InitSharedVarU16(&u16KiNum, 1);
     InitSharedVarU16(&u16KiDenum, 4500);
 
@@ -546,9 +543,10 @@ void Gestion_RW_Wconfig(void)
     }
     else if (g_SPI_RX_flag == 18)
     {
-        g_timePrecision = (signed long)g_SPI_RX_clearReg;
+        g_timeMesureSpeed = g_SPI_RX_clearReg;
         send_spi1(ACK_SLAVE);
-        //g_multi_timeMesureSpeed_s = 1000 / ((unsigned int) g_timePrecision);
+        g_multi_timeMesureSpeed_s = 1000 / ((unsigned int) g_timeMesureSpeed);
+        g_timeControlLoop = g_timeMesureSpeed;
     }
 }
 
@@ -715,7 +713,7 @@ void Gestion_RW_Rconfig(void)
     }
     else if (g_SPI_RX_flag == 18)
     {
-        send_spi1((unsigned char) (g_timePrecision));
+        send_spi1((unsigned char) (g_timeMesureSpeed));
     }
     else if (g_SPI_RX_flag == 19)
     {
@@ -811,7 +809,7 @@ void Gestion_RW_Rmot_conf(void)
     else if (g_SPI_RX_flag == 4)
     {
         ReadSharedVarS16_SPI(&s16ConfMaxSpeed);
-        send_spi1((unsigned char) (s16ConfMaxSpeed.s16_data_SPI >> 8));
+        send_spi1((unsigned char) s16ConfMaxSpeed.s16_data_SPI >> 8);
     }
     else if (g_SPI_RX_flag == 5)
     {
@@ -889,8 +887,9 @@ void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void)
     WriteTimer1(0);
     _T1IF = 0;
     g_timerSpeed++;
+    g_timerControl++;
 
-    if (g_timerSpeed >= g_timePrecision)
+    if (g_timerSpeed >= g_timeMesureSpeed)
     {
         g_timerSpeed = 0;
         if (g_interface_mesure_vitesse_SPI == IV_CODEUR)
@@ -910,20 +909,28 @@ void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void)
             g_motor_pos_mem = s32MotorPosition.s32_data_APP;
 
         }
-        else
+        else if(g_interface_mesure_vitesse_SPI == IV_TACHY)
         {
-            //g_motor_vitesse = ((signed long) g_pulse_drive)*((signed long) g_multi_timeMesureSpeed_s);
-            g_motor_vitesse = 1000*g_pulse_drive/g_timePrecision; // pulse/s
+            g_motor_vitesse = ((signed long) g_pulse_drive)*((signed long) g_multi_timeMesureSpeed_s);
             g_pulse_drive = 0;
             if (DRIVER_DIRO == 1)
                 g_motor_vitesse *= -1;
             
             //RPS    driver = 24 pulses / tr
 //            g_motor_vitesse /= 24;
-            s16MesuredSpeed.s16_data_APP = (signed int)(g_motor_vitesse);
+            s16MesuredSpeed.s16_data_APP = (signed int)(g_motor_vitesse/24);// /24);          
             WriteSharedVarS16_APP(&s16MesuredSpeed);
         }
-   
+        else
+        {
+            g_Erreur_Cour++;
+        }
+    }
+
+    if (g_timerControl >= g_timeControlLoop)
+    {
+        g_timerControl = 0;
+        
         if (g_flag_asser == LOOP)
         {
             // Erreur Proportionnelle
@@ -946,18 +953,12 @@ void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void)
         }
         else
         {
-            // Récupération de la vitesse désirée en pulse/s
             ReadSharedVarS16_APP(&s16SetpointSpeed);
             g_dutycycle  = ((signed long int)s16SetpointSpeed.s16_data_APP);
-            
-            // Remise à l'échelle en fonction de
-            // la vitesse maximale, PWM : Max 1480 -> +/- 740.
-            g_dutycycle *= PWM_VAL_MAX/2;
-            ReadSharedVarS16_APP(&s16ConfMaxSpeed);
-            g_dutycycle /= (signed long)s16ConfMaxSpeed.s16_data_APP;
+            g_dutycycle *= ((signed long int)PWM_VAL_CENTRE);           
         }
 
-//        g_dutycycle /= 1000;
+        g_dutycycle /= 1000;
         g_dutycycle += PWM_VAL_CENTRE;
         
         s16MesuredAcceleration.s16_data_APP = (unsigned int)g_dutycycle;

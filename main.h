@@ -148,6 +148,7 @@
 #define OPEN    0x01
 #define LOOP    0x02
 
+
 // Structures ----------------------------------------------------------------//
 // Data communication for SPI.
 typedef struct
