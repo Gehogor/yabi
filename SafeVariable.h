@@ -12,7 +12,7 @@
  * Created on 25 avril 2016, 19:01
  */
 
-#ifndef _SHAREDVARLIB__H
+#ifndef _SHAREDVARLIB_H_
 #define	_SHAREDVARLIB_H_
 
 typedef struct {
@@ -71,4 +71,4 @@ signed long int read_u32(safe_s32* var);
 
 unsigned char inverseIndex(unsigned char index);
 
-#endif	/* _SHAREDVARLIB_H */
+#endif	/* _SHAREDVARLIB_H_ */
