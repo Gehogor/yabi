@@ -67,7 +67,7 @@ signed int read_s16(safe_s16* var);
 
 void init_s32(safe_s32* var, signed long int value);
 void write_s32(safe_s32* var, signed long int value);
-signed long int read_u32(safe_s32* var);
+signed long int read_s32(safe_s32* var);
 
 unsigned char inverseIndex(unsigned char index);
 
