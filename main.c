@@ -304,8 +304,8 @@ void InitDriver(void)
 
 void InitVariable(void)
 {
-    unsigned char u8TabTmpVar[4];
-    unsigned int u16TmpVar = 0;
+//    unsigned char u8TabTmpVar[4];
+//    unsigned int u16TmpVar = 0;
     g_mode = MODE_STOP;
     g_mode_mem = MODE_OPEN;
 
@@ -330,7 +330,7 @@ void InitVariable(void)
 
     InitSharedVarU16(&u16ConfCodeurPPT, 0);
     InitSharedVarU16(&u16ConfMaxCurrent, 2330);
-    InitSharedVarS16(&s16ConfMaxSpeed, 111);
+    InitSharedVarS16(&s16ConfMaxSpeed, 2664);
 
     InitSharedVarS32(&s32IErrorMax, 0);
 }
@@ -913,8 +913,11 @@ void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void)
         else
         {
             //g_motor_vitesse = ((signed long) g_pulse_drive)*((signed long) g_multi_timeMesureSpeed_s);
-            g_motor_vitesse = 1000*g_pulse_drive/g_timePrecision; // pulse/s
+            g_motor_vitesse = g_pulse_drive;
             g_pulse_drive = 0;
+            g_motor_vitesse *= 1000;
+            g_motor_vitesse /= g_timePrecision; // pulse/s
+            
             if (DRIVER_DIRO == 1)
                 g_motor_vitesse *= -1;
             
@@ -937,6 +940,7 @@ void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void)
             ReadSharedVarU16_APP(&u16KpNum);
             ReadSharedVarU16_APP(&u16KpDenum);
             g_dutycycle = g_Erreur_P * u16KpNum.u16_data_APP / u16KpDenum.u16_data_APP;
+            
             // Calcul Asservissement Ki
             ReadSharedVarU16_APP(&u16KiNum);
             ReadSharedVarU16_APP(&u16KiDenum);
@@ -950,9 +954,10 @@ void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void)
             ReadSharedVarS16_APP(&s16SetpointSpeed);
             g_dutycycle  = ((signed long int)s16SetpointSpeed.s16_data_APP);
             
+            
             // Remise à l'échelle en fonction de
             // la vitesse maximale, PWM : Max 1480 -> +/- 740.
-            g_dutycycle *= PWM_VAL_MAX/2;
+            g_dutycycle *= (PWM_VAL_MAX/2);
             ReadSharedVarS16_APP(&s16ConfMaxSpeed);
             g_dutycycle /= (signed long)s16ConfMaxSpeed.s16_data_APP;
         }
