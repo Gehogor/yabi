@@ -19,10 +19,7 @@
 #include <adc10.h>
 
 // Inverter parameters -------------------------------------------------------//
-#define TYPE_CARD 0x01  //Carte d'axe Moteur Brushless
-//#define TYPE_CARD 0x02  //Carte d'axe Moteur CC
-//#define TYPE_CARD 0x03  //Carte d'axe Moteur Pas ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â  Pas
-//#define TYPE_CARD 0x04  //Carte d'axe Servo moteur modÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©lisme
+#define TYPE_CARD 0x01      // Type of brushless invertor.
 
 #define IV_ENCODER  1
 #define IV_TACHY   0
