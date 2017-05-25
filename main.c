@@ -31,9 +31,7 @@
 
 // Current project
 #include "Config.h"
-#include "EepromLib.h"
-#include "SharedVarLib.h"
-#include "SafeVariable.h"
+#include "YaXiType.h"
 
 // Axis parameters
 volatile long g_positionUnit = 0;
@@ -414,6 +412,10 @@ unsigned char process_SPI( unsigned char data )
             case SPI_PID_WRITE:
                 result = process_SPI_PID_write(data);
                 break;
+
+            case SPI_POSITION_WRITE:
+                result = process_SPI_positionWrite(data);
+                break;
         }
 
         g_spi.index++;
@@ -539,6 +541,24 @@ unsigned char process_SPI_PID_write( unsigned char data )
         g_kp = spi_kp.l / 65536.0;
         g_ki = spi_ki.l / 65536.0;
         g_kd = spi_kd.l / 65536.0;
+        g_spi.functionCount = 0;
+        return NO_ERROR;
+    }
+
+    g_spi.functionCount = 0;
+    return SPI_ERROR_DATA;
+}
+
+unsigned char process_SPI_positionWrite( unsigned char data )
+{
+    if(g_spi.index < 4)
+    {
+        spi_position.c[g_spi.index] = data;
+        return SPI_NO_DATA;
+    }
+    else if(g_spi.index == 4 && data == SPI_END)
+    {
+        g_positionUnit = spi_position.l;
         g_spi.functionCount = 0;
         return NO_ERROR;
     }

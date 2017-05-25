@@ -18,12 +18,6 @@
 // PIC management
 #include <adc10.h>
 
-// Inverter parameters -------------------------------------------------------//
-#define TYPE_CARD 0x01  //Carte d'axe Moteur Brushless
-
-#define IV_ENCODER  1
-#define IV_TACHY   0
-
 // Timer parameters ----------------------------------------------------------//
 #define PR_T1   29500       // 1kHz
 #define PR_T2   2938        // 10kHz
@@ -64,26 +58,6 @@
 #define LED_FREQ_2HZ    5
 #define LED_FREQ_1HZ    10
 
-// Communication parameters --------------------------------------------------//
-#define SPI_START       0x5E
-#define SPI_END         0xE5
-#define SPI_NO_DATA     0xF5
-#define SPI_TARGET      0x01
-#define SPI_MODE_READ   0x02
-#define SPI_MODE_WRITE  0x03
-#define SPI_PID_READ    0x04
-#define SPI_PID_WRITE   0x05
-
-// Global errors -------------------------------------------------------------//
-#define NO_ERROR        0x00
-#define SPI_UNCKNOW     0xF6
-#define SPI_ERROR_DATA  0xF7
-
-// Mode of state machine -----------------------------------------------------//
-#define STOP    0x00
-#define OPEN    0x01
-#define LOOP    0x02
-
 // Functions -----------------------------------------------------------------//
 void initIOs();
 void initTimer();
@@ -104,6 +78,7 @@ unsigned char process_SPI_modeRead(unsigned char data);
 unsigned char process_SPI_modeWrite(unsigned char data);
 unsigned char process_SPI_PID_read(unsigned char data);
 unsigned char process_SPI_PID_write(unsigned char data);
+unsigned char process_SPI_positionWrite(unsigned char data);
 
 void processMonitoring(long frequency);
 void processLoop(long frequency);
