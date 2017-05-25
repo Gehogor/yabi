@@ -38,13 +38,22 @@
 // Axis parameters
 volatile long g_positionUnit = 0;
 volatile long g_speedUnit = 0;
+volatile long g_accelUnit = 0;
 volatile long g_hallUnit = 0;
-volatile unsigned char g_mode;
-volatile unsigned char g_error;
+
+volatile long g_targetPositionUnit = 0;
+volatile long g_targetSpeedUnit = 0;
+
+volatile unsigned char g_mode = STOP;
+volatile unsigned char g_error = 0;
+
+volatile double g_kp = 0;
+volatile double g_ki = 0;
+volatile double g_kd = 0;
 
 long g_lastPositionUnit = 0;
 long g_lastSpeedUnit = 0;
-unsigned char g_lastMode;
+unsigned char g_lastMode = 0;
 
 // Led managmement
 typedef struct
@@ -61,7 +70,7 @@ typedef struct
     unsigned char state;
     unsigned long measure;
     unsigned long average;
-    SafeData_u16 value;
+    volatile unsigned int value;
 } Current;
 Current g_current = {.timer = 0,.state = 0,.measure = 0,.average = 0};
 
@@ -81,16 +90,22 @@ typedef struct
 } ControlLoop;
 ControlLoop g_cl = {.timer = 0};
 
-// Data management
-SafeData_s32 g_targetPos = {.reader = 0,.writer = 0};
-SafeData_s32 g_targetSpeed = {.reader = 0,.writer = 0};
-SafeData_s32 g_position = {.reader = 0,.writer = 0};
-SafeData_s32 g_speed = {.reader = 0,.writer = 0};
-SafeData_s32 g_accel = {.reader = 0,.writer = 0};
+// SPI Data management
+union S32_U8 spi_targetPos;
+union S32_U8 spi_targetSpeed;
+union S32_U8 spi_position;
+union S32_U8 spi_speed;
+union S32_U8 spi_accel;
 
-SafeData_s32 g_kp = {.reader = 0,.writer = 0};
-SafeData_s32 g_ki = {.reader = 0,.writer = 0};
-SafeData_s32 g_kd = {.reader = 0,.writer = 0};
+unsigned char spi_mode;
+union U16_U8 spi_current;
+
+union S32_U8 spi_kp;
+union S32_U8 spi_ki;
+union S32_U8 spi_kd;
+
+
+// Main function.
 
 int main( )
 {
@@ -323,7 +338,7 @@ void process_current( )
 
     if(g_current.measure >= 5)
     {
-        fromU16_u16(&g_current.value,g_current.average / g_current.measure);
+        g_current.value = g_current.average / g_current.measure;
 
         g_current.measure = 0;
         g_current.average = 0;
@@ -385,7 +400,7 @@ unsigned char process_SPI( unsigned char data )
                 break;
 
             case SPI_MODE_READ:
-                result = process_SPI_modeRead();
+                result = process_SPI_modeRead(data);
                 break;
 
             case SPI_MODE_WRITE:
@@ -393,27 +408,27 @@ unsigned char process_SPI( unsigned char data )
                 break;
 
             case SPI_KP_READ:
-                result = process_SPI_kp(data);
+                result = process_SPI_kpRead(data);
                 break;
 
             case SPI_KP_WRITE:
-                result = process_SPI_ki(data);
+                result = process_SPI_kpWrite(data);
                 break;
 
             case SPI_KI_READ:
-                result = process_SPI_kd(data);
+                result = process_SPI_kiRead(data);
                 break;
 
             case SPI_KI_WRITE:
-                result = process_SPI_kd(data);
+                result = process_SPI_kiWrite(data);
                 break;
 
             case SPI_KD_READ:
-                result = process_SPI_kd(data);
+                result = process_SPI_kdRead(data);
                 break;
 
             case SPI_KD_WRITE:
-                result = process_SPI_kd(data);
+                result = process_SPI_kdWrite(data);
                 break;
         }
 
@@ -427,58 +442,106 @@ unsigned char process_SPI_target( unsigned char data )
 {
     if(g_spi.index < 4)
     {
-        fromU8_s32(&g_targetPos,data,g_spi.index);
-        return toU8_s32(&g_position,g_spi.index);
+        if(g_spi.index == 0)
+        {
+            spi_position.l = g_positionUnit;
+            spi_speed.l = g_speedUnit;
+            spi_accel.l = g_accelUnit;
+            spi_current.i = g_current.value;
+        }
+
+        spi_targetPos.c[g_spi.index] = data;
+        return spi_position.c[g_spi.index];
     }
     else if(g_spi.index >= 4 && g_spi.index < 8)
     {
-        fromU8_s32(&g_targetSpeed,data,g_spi.index - 4);
-        return toU8_s32(&g_speed,g_spi.index - 4);
+        spi_targetSpeed.c[g_spi.index - 4] = data;
+        return spi_speed.c[g_spi.index - 4];
     }
     else if(g_spi.index >= 8 && g_spi.index < 12)
     {
-        return toU8_s32(&g_accel,g_spi.index - 8);
+        return spi_accel.c[g_spi.index - 8];
     }
     else if(g_spi.index >= 12 && g_spi.index < 14)
     {
-        return toU8_u16(&g_current.value,g_spi.index - 12);
+        return spi_current.c[g_spi.index - 12];
+    }
+    else if(g_spi.index == 14 && data == SPI_END)
+    {
+        g_targetPositionUnit = spi_targetPos.l;
+        g_targetSpeedUnit = spi_targetSpeed.l;
+        g_spi.functionCount = 0;
+        return NO_ERROR;
     }
 
     g_spi.functionCount = 0;
-    return g_error;
+    return SPI_ERROR_DATA;
 }
 
-unsigned char process_SPI_modeRead( )
+unsigned char process_SPI_modeRead( unsigned char data )
 {
-    if(g_spi.index == 1)
+    g_spi.functionCount = 0;
+
+    if(g_spi.index == 0 && data == SPI_END)
         return g_mode;
 
-    g_spi.functionCount = 0;
-    return g_error;
+    return SPI_ERROR_DATA;
 }
 
 unsigned char process_SPI_modeWrite( unsigned char data )
 {
-    g_mode = data;
+    if(g_spi.index == 0)
+        spi_mode = data;
+    else if(g_spi.index == 1 && data == SPI_END)
+    {
+        g_mode = spi_mode;
+        g_spi.functionCount = 0;
+        return NO_ERROR;
+    }
+
     g_spi.functionCount = 0;
-    return g_error;
+    return SPI_ERROR_DATA;
+}
+
+unsigned char process_SPI_kpRead( unsigned char data )
+{
+    if(g_spi.index < 4)
+    {
+        if(g_spi.index == 0)
+            spi_kp.l = g_kp;
+        return spi_kp.c[g_spi.index];
+    }
+    else if(g_spi.index == 4 && data == SPI_END)
+    {
+        g_spi.functionCount = 0;
+        return NO_ERROR;
+    }
+    
+    g_spi.functionCount = 0;
+    return SPI_ERROR_DATA;
 }
 
 unsigned char process_SPI_kpWrite( unsigned char data )
 {
-    if(g_spi.index < 4)
-    {
-        fromU8_s32(&g_kp,data,g_spi.index);
-        return SPI_NO_DATA;
-    }
+
 }
 
-unsigned char process_SPI_ki( unsigned char data )
+unsigned char process_SPI_kiRead( unsigned char data )
 {
 
 }
 
-unsigned char process_SPI_kd( unsigned char data )
+unsigned char process_SPI_kiWrite( unsigned char data )
+{
+
+}
+
+unsigned char process_SPI_kdRead( unsigned char data )
+{
+
+}
+
+unsigned char process_SPI_kdWrite( unsigned char data )
 {
 
 }
@@ -486,10 +549,7 @@ unsigned char process_SPI_kd( unsigned char data )
 void processMonitoring( long frequency )
 {
     g_speedUnit = (g_positionUnit - g_lastPositionUnit) * frequency;
-
-    fromS32_s32(&g_position,g_positionUnit);
-    fromS32_s32(&g_speed,g_speedUnit);
-    fromS32_s32(&g_accel,(g_speedUnit - g_lastSpeedUnit) * frequency);
+    g_accelUnit = (g_speedUnit - g_lastSpeedUnit) * frequency;
 
     g_lastPositionUnit = g_positionUnit;
     g_lastSpeedUnit = g_speedUnit;
@@ -500,8 +560,8 @@ void processLoop( long frequency )
     if(g_mode != LOOP)
         return;
 
-    double posError = toS32_s32(&g_targetPos) - toS32_s32(&g_position);
-    double cmd = posError * toS32_s32(&g_kp) / 65536.0;
+    double posError = g_targetPositionUnit - g_positionUnit;
+    double cmd = posError * toS32_s32(&spi_kp) / 65536.0;
 
     // Offset for the PWM (0 -> 1480)
     cmd += HALF_PWM_MAX;

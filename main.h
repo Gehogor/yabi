@@ -20,9 +20,6 @@
 
 // Inverter parameters -------------------------------------------------------//
 #define TYPE_CARD 0x01  //Carte d'axe Moteur Brushless
-//#define TYPE_CARD 0x02  //Carte d'axe Moteur CC
-//#define TYPE_CARD 0x03  //Carte d'axe Moteur Pas ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â  Pas
-//#define TYPE_CARD 0x04  //Carte d'axe Servo moteur modÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©lisme
 
 #define IV_ENCODER  1
 #define IV_TACHY   0
@@ -34,8 +31,6 @@
 #define PR_T4   11480       // 10Hz
 
 // PWM parameters ------------------------------------------------------------//
-// PWM Period = [(PRy) + 1] x TCY x (TMRy Prescale Value)
-// PWM Frequency = 1/[PWM Period]
 #define PWM_MAX         1480
 #define HALF_PWM_MAX    PWM_MAX/2
 
@@ -71,6 +66,7 @@
 
 // Communication parameters --------------------------------------------------//
 #define SPI_START       0x5E
+#define SPI_END         0xE5
 #define SPI_TARGET      0x01
 #define SPI_MODE_READ   0x02
 #define SPI_MODE_WRITE  0x03
@@ -81,8 +77,10 @@
 #define SPI_KD_READ     0x08
 #define SPI_KD_WRITE    0x09
 
+// Global errors -------------------------------------------------------------//
+#define NO_ERROR        0x00
 #define SPI_UNCKNOW     0xF6
-#define SPI_NO_DATA     0xF7
+#define SPI_ERROR_DATA  0xF7
 
 // Mode of state machine -----------------------------------------------------//
 #define STOP    0x00
@@ -105,13 +103,13 @@ void process_mode();
 
 unsigned char process_SPI(unsigned char data);
 unsigned char process_SPI_target(unsigned char data);
-unsigned char process_SPI_modeRead();
+unsigned char process_SPI_modeRead(unsigned char data);
 unsigned char process_SPI_modeWrite(unsigned char data);
-unsigned char process_SPI_kpRead();
+unsigned char process_SPI_kpRead(unsigned char data);
 unsigned char process_SPI_kpWrite(unsigned char data);
-unsigned char process_SPI_kiRead();
+unsigned char process_SPI_kiRead(unsigned char data);
 unsigned char process_SPI_kiWrite(unsigned char data);
-unsigned char process_SPI_kdRead();
+unsigned char process_SPI_kdRead(unsigned char data);
 unsigned char process_SPI_kdWrite(unsigned char data);
 
 void processMonitoring(long frequency);
