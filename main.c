@@ -374,6 +374,35 @@ void process_mode( )
     }
 }
 
+void process_monitoring( long frequency )
+{
+    g_speedUnit = (g_positionUnit - g_lastPositionUnit) * frequency;
+    g_accelUnit = (g_speedUnit - g_lastSpeedUnit) * frequency;
+
+    g_lastPositionUnit = g_positionUnit;
+    g_lastSpeedUnit = g_speedUnit;
+}
+
+void process_loop( long frequency )
+{
+    if(g_mode != LOOP)
+        return;
+
+    double posError = g_targetPositionUnit - g_positionUnit;
+    double cmd = posError * g_kp / 65536.0;
+
+    // Offset for the PWM (0 -> 1480)
+    cmd += HALF_PWM_MAX;
+
+    // Limit the PWM resulting.
+    if(cmd > PWM_MAX)
+        cmd = PWM_MAX;
+    else if(cmd < 0.0)
+        cmd = 0.0;
+
+    SetDCOC1PWM(cmd);
+}
+
 unsigned char process_SPI( unsigned char data )
 {
     unsigned char result = 0;
@@ -567,35 +596,6 @@ unsigned char process_SPI_positionWrite( unsigned char data )
     return SPI_ERROR_DATA;
 }
 
-void processMonitoring( long frequency )
-{
-    g_speedUnit = (g_positionUnit - g_lastPositionUnit) * frequency;
-    g_accelUnit = (g_speedUnit - g_lastSpeedUnit) * frequency;
-
-    g_lastPositionUnit = g_positionUnit;
-    g_lastSpeedUnit = g_speedUnit;
-}
-
-void processLoop( long frequency )
-{
-    if(g_mode != LOOP)
-        return;
-
-    double posError = g_targetPositionUnit - g_positionUnit;
-    double cmd = posError * g_kp / 65536.0;
-
-    // Offset for the PWM (0 -> 1480)
-    cmd += HALF_PWM_MAX;
-
-    // Limit the PWM resulting.
-    if(cmd > PWM_MAX)
-        cmd = PWM_MAX;
-    else if(cmd < 0.0)
-        cmd = 0.0;
-
-    SetDCOC1PWM(cmd);
-}
-
 unsigned char checkIfFunctionExist( )
 {
     switch(g_spi.function)
@@ -620,83 +620,8 @@ void __attribute__( (interrupt,no_auto_psv) ) _T1Interrupt( void )
     WriteTimer1(0);
     _T1IF = 0;
 
-    processMonitoring(1000);
-    processLoop(1000);
-
-    /*if(g_timerSpeed >= g_timePrecision)
-    {
-        g_timerSpeed = 0;
-        if(g_interface_mesure_vitesse_SPI == IV_ENCODER)
-        {
-            //recup position
-            s32MotorPosition.s32_data_APP = (((signed long)g_encoderUnit) << 15)+((signed long)ReadQEI());
-            WriteSharedVarS32_APP(&s32MotorPosition);
-            //Sauvegarde de la valeur ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â  soustraire pour la prochain calcul
-            g_motor_pos_mem = s32MotorPosition.s32_data_APP;
-
-            //Determine le nombre de pas depuis la derniere acquisition
-            g_motor_vitesse = s32MotorPosition.s32_data_APP - g_motor_pos_mem;
-            g_motor_vitesse *= 1000;// ms -> s
-            g_motor_vitesse /= g_timePrecision;// pulse/s
-
-            //Copie la vitesse calculer dans la variable partagÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½e
-            s32MesuredSpeed.s32_data_APP = g_motor_vitesse;
-            WriteSharedVarS32_APP(&s32MesuredSpeed);
-        }
-        else
-        {
-            g_motor_vitesse = g_hallUnit;
-            g_hallUnit = 0;// Reset the counter
-            g_motor_vitesse *= 1000;// ms -> s
-            g_motor_vitesse /= g_timePrecision;// pulse/s
-
-            if(DRIVER_DIRO == 1)
-                g_motor_vitesse *= -1;
-
-            //RPS    driver = 24 pulses / tr
-            //            g_motor_vitesse /= 24;
-            s32MesuredSpeed.s32_data_APP = g_motor_vitesse;
-            WriteSharedVarS32_APP(&s32MesuredSpeed);
-        }
-
-        ReadSharedVarS32_APP(&s32SetpointSpeed);
-        g_dutycycle = s32SetpointSpeed.s32_data_APP;
-
-        if(g_flag_asser == LOOP)
-        {
-            // Erreur Proportionnelle
-            g_Erreur_P = s32SetpointSpeed.s32_data_APP - g_motor_vitesse;
-            s32MesuredAcceleration.s32_data_APP = g_Erreur_P;
-            WriteSharedVarS32_APP(&s32MesuredAcceleration);
-            // Cumul IntÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½grale
-            g_Erreur_I += g_Erreur_P;
-
-            // Calcul Asservissement Kp
-            ReadSharedVarU16_APP(&u16KpNum);
-            ReadSharedVarU16_APP(&u16KpDenum);
-            g_dutycycle += g_Erreur_P;
-            g_dutycycle *= (signed long)u16KpNum.u16_data_APP;
-            g_dutycycle /= (signed long)u16KpDenum.u16_data_APP;
-
-            // Calcul Asservissement Ki
-            ReadSharedVarU16_APP(&u16KiNum);
-            ReadSharedVarU16_APP(&u16KiDenum);
-            g_dutycycle += g_Erreur_I;
-            g_dutycycle *= (signed long)u16KiNum.u16_data_APP;
-            g_dutycycle /= (signed long)u16KiDenum.u16_data_APP;
-        }
-
-        // Remise ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ l'ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½chelle en fonction de
-        // la vitesse maximale, PWM : Max 1480 -> +/- 740.
-        g_dutycycle *= (PWM_VAL_MAX / 2);
-        ReadSharedVarS32_APP(&s32ConfMaxSpeed);
-        g_dutycycle /= s32ConfMaxSpeed.s32_data_APP;
-
-        // Offset for the PWM (0 -> 1480)
-        g_dutycycle += PWM_VAL_MAX / 2;
-
-        SetDCOC1PWM((unsigned int)(g_dutycycle));
-    }*/
+    process_monitoring(1000);
+    process_loop(1000);
 }
 
 /**

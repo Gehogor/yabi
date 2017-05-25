@@ -71,6 +71,8 @@ void initDriver(void);
 void process_LED();
 void process_current();
 void process_mode();
+void process_monitoring(long frequency);
+void process_loop(long frequency);
 
 unsigned char process_SPI(unsigned char data);
 unsigned char process_SPI_target(unsigned char data);
@@ -79,9 +81,6 @@ unsigned char process_SPI_modeWrite(unsigned char data);
 unsigned char process_SPI_PID_read(unsigned char data);
 unsigned char process_SPI_PID_write(unsigned char data);
 unsigned char process_SPI_positionWrite(unsigned char data);
-
-void processMonitoring(long frequency);
-void processLoop(long frequency);
 
 unsigned char checkIfFunctionExist();
 
