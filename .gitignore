@@ -30,3 +30,13 @@
 
 # Debug files
 *.dSYM/
+
+*.xml
+Yabi.X/nbproject/private/SuppressibleMessageMemo.properties
+*.bash
+Yabi.X/nbproject/Makefile-variables.mk
+*.mk
+*.properties
+Yabi.X/Makefile
+*.map
+*.d

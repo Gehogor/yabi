@@ -6,151 +6,60 @@
  *   | | / ____ \ | |_) |_| |_
  *   |_|/_/    \_\|____/|_____|
  *
- * File:   SharedVarLib.c
- * Author: Yann
+ * File:   SafeVariable.c
+ * Author: Yann Alonso and Jerome Chemouny
  *
  * Created on 25 avril 2016, 19:01
  */
 
+//---------------------//
 #include "SafeVariable.h"
+//---------------------//
 
-
-// Management of unsigned char -----------------------------------------------//
-void init_u8(safe_u8* var, unsigned char value)
+long toS32_s32( SafeData_s32* data )
 {
-    var->index = 0;
-    var->data[0] = value;
-    var->data[1] = value;
+    data->reader = ~data->writer;
+    return data->buffer[data->reader].l;
 }
 
-void write_u8(safe_u8* var, unsigned char value)
+void fromS32_s32( SafeData_s32* data,long value )
 {
-    var->index = inverseIndex(var->index);
-    var->data[ var->index ] = value;
+    data->writer = ~data->reader;
+    data->buffer[data->writer].l = value;
 }
 
-unsigned char read_u8(safe_u8* var)
+unsigned char toU8_s32( SafeData_s32* data,unsigned char index )
 {
-    if( var->index == 0 )
-        return var->data[1];
-    return var->data[0];
+    if(index == 0)
+        data->reader = ~data->writer;
+
+    return data->buffer[data->reader].c[index];
 }
 
-
-// Management of unsigned int ------------------------------------------------//
-void init_u16(safe_u16* var, unsigned int value)
+void fromU8_s32( SafeData_s32* data,unsigned char value,unsigned char index )
 {
-    var->index = 0;
-    var->data[0] = value;
-    var->data[1] = value;
+    if(index == 0)
+        data->writer = ~data->reader;
+
+    data->buffer[data->writer].c[index] = value;
 }
 
-void write_u16(safe_u16* var, unsigned int value)
+unsigned int toU16_u16( SafeData_u16* data )
 {
-    var->index = inverseIndex(var->index);
-    var->data[ var->index ] = value;
+    data->reader = ~data->writer;
+    return data->buffer[data->reader].i;
 }
 
-unsigned int read_u16(safe_u16* var)
+unsigned char toU8_u16( SafeData_u16* data,unsigned char index )
 {
-    if( var->index == 0 )
-        return var->data[1];
-    return var->data[0];
+    if(index == 0)
+        data->reader = ~data->writer;
+
+    return data->buffer[data->reader].c[index];
 }
 
-
-// Management of unsigned long int -------------------------------------------//
-void init_u32(safe_u32* var, unsigned long int value)
+void fromU16_u16( SafeData_u16* data,unsigned int value )
 {
-    var->index = 0;
-    var->data[0] = value;
-    var->data[1] = value;
-}
-
-void write_u32(safe_u32* var, unsigned long int value)
-{
-    var->index = inverseIndex(var->index);
-    var->data[ var->index ] = value;
-}
-
-unsigned long int read_u32(safe_u32* var)
-{
-    if( var->index == 0 )
-        return var->data[1];
-    return var->data[0];
-}
-
-
-// Management of signed char -------------------------------------------------//
-void init_s8(safe_s8* var, signed char value)
-{
-    var->index = 0;
-    var->data[0] = value;
-    var->data[1] = value;
-}
-
-void write_s8(safe_s8* var, signed char value)
-{
-    var->index = inverseIndex(var->index);
-    var->data[ var->index ] = value;
-}
-
-signed char read_s8(safe_s8* var)
-{
-    if( var->index == 0 )
-        return var->data[1];
-    return var->data[0];
-}
-
-
-// Management of signed int --------------------------------------------------//
-void init_s16(safe_s16* var, signed int value)
-{
-    var->index = 0;
-    var->data[0] = value;
-    var->data[1] = value;
-}
-
-void write_s16(safe_s16* var, signed int value)
-{
-    var->index = inverseIndex(var->index);
-    var->data[ var->index ] = value;
-}
-
-signed int read_s16(safe_s16* var)
-{
-    if( var->index == 0 )
-        return var->data[1];
-    return var->data[0];
-}
-
-
-// Management of signed long -------------------------------------------------//
-void init_s32(safe_s32* var, signed long int value)
-{
-    var->index = 0;
-    var->data[0] = value;
-    var->data[1] = value;
-}
-
-void write_s32(safe_s32* var, signed long int value)
-{
-    var->index = inverseIndex(var->index);
-    var->data[ var->index ] = value;
-}
-
-signed long int read_s32(safe_s32* var)
-{
-    if( var->index == 0 )
-        return var->data[1];
-    return var->data[0];
-}
-
-
-// Tools ---------------------------------------------------------------------//
-unsigned char inverseIndex(unsigned char index)
-{
-    if( index == 0 )
-        return 1;
-    return 0;
+    data->writer = ~data->reader;
+    data->buffer[data->writer].i = value;
 }

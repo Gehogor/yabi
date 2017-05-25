@@ -7,67 +7,39 @@
  *   |_|/_/    \_\|____/|_____|
  *
  * File:   main.h
- * Author: Yann
+ * Author: Yann Alonso and Jerome Chemouny
  *
  * Created on 25 avril 2016, 19:01
  */
 
+#ifndef _MAIN_H_
+#define	_MAIN_H_
+
+// PIC management
 #include <adc10.h>
-
-#ifndef MAIN_H
-#define	MAIN_H
-
 
 // Inverter parameters -------------------------------------------------------//
 #define TYPE_CARD 0x01  //Carte d'axe Moteur Brushless
 //#define TYPE_CARD 0x02  //Carte d'axe Moteur CC
-//#define TYPE_CARD 0x03  //Carte d'axe Moteur Pas à Pas
-//#define TYPE_CARD 0x04  //Carte d'axe Servo moteur modélisme
+//#define TYPE_CARD 0x03  //Carte d'axe Moteur Pas ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â  Pas
+//#define TYPE_CARD 0x04  //Carte d'axe Servo moteur modÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©lisme
 
-#define IV_CODEUR  1
+#define IV_ENCODER  1
 #define IV_TACHY   0
 
-
-// Global parameters ---------------------------------------------------------//
-#define FREQUENCY   117968000       // Working frequence xPLL16 => XTAL=7.373Mhz x16
-#define TOSC_GENE   (1/FREQUENCY)
-#define TCY         0.000000033907  // (TOSC_GENE*4)
-#define FCY         29492000        // (1/TCY) ~30MIPS
-#define BAUD 115200                 // RS232 parameters
-#define BRG ((FCY / (BAUD * 16))-1)
-
-#define TMRX_PRES_VAL_1     1
-#define TMRX_PRES_VAL_8     8
-#define TMRX_PRES_VAL_64    64
-#define TMRX_PRES_VAL_256   256
-
-#define TMRX_PRES_PARAM_1     0
-#define TMRX_PRES_PARAM_8     1
-#define TMRX_PRES_PARAM_64    2
-#define TMRX_PRES_PARAM_256   3
-
+// Timer parameters ----------------------------------------------------------//
 #define PR_T1   29500       // 1kHz
 #define PR_T2   2938        // 10kHz
 #define PR_T3   1474        // 20kHz
 #define PR_T4   11480       // 10Hz
 
-
 // PWM parameters ------------------------------------------------------------//
-//PWM Period = [(PRy) + 1] x TCY x (TMRy Prescale Value)
-//PWM Frequency = 1/[PWM Period]
-#define PWM_FREQ    20000
-#define PWM_PER     (1/PWM_FREQ)
+// PWM Period = [(PRy) + 1] x TCY x (TMRy Prescale Value)
+// PWM Frequency = 1/[PWM Period]
+#define PWM_MAX         1480
+#define HALF_PWM_MAX    PWM_MAX/2
 
-#define PWM_PRES_VAL   TMRX_PRES_VAL_1
-#define PWM_PRES_PARAM TMRX_PRES_PARAM_1
-
-#define PWM_VAL_MAX     1480
-#define PWM_VAL_CENTRE  PWM_VAL_MAX/2
-
-#define PRX_REG     (PWM_PER/(TCY*PWM_PRES_VAL))
-
-
-// IO parameters -------------------------------------------------------------//
+// IOs parameters ------------------------------------------------------------//
 #define DRIVER_MODE     _LATE1
 #define DRIVER_DIR      _LATE2
 #define DRIVER_COAST	_LATE3
@@ -77,9 +49,9 @@
 #define DRIVER_FF2      _RC14
 #define DRIVER_ALIMP	_RE4
 
-#define CODEUR_PA       _RB4
-#define CODEUR_PB       _RB5
-#define CODEUR_PZ       _RB3
+#define ENCODER_PA       _RB4
+#define ENCODER_PB       _RB5
+#define ENCODER_PZ       _RB3
 
 #define SDI_SCK         _RE8
 #define SDI_SDI         _RF2
@@ -89,110 +61,70 @@
 #define ADC_CSOUT       (ADC_CH0_POS_SAMPLEA_AN0 & ADC_CH0_NEG_SAMPLEA_NVREF)
 #define ADC_REF         (ADC_CH0_POS_SAMPLEA_AN1 & ADC_CH0_NEG_SAMPLEA_NVREF)
 
-#define LED		_LATE5
-
+// Led managmement -----------------------------------------------------------//
+#define LED             _LATE5
 #define LED_FREQ_0HZ    0
 #define LED_FREQ_10HZ   1
 #define LED_FREQ_5HZ    2
 #define LED_FREQ_2HZ    5
 #define LED_FREQ_1HZ    10
 
-#define LED_ON  0
-#define LED_OFF 1
+// Communication parameters --------------------------------------------------//
+#define SPI_START       0x5E
+#define SPI_TARGET      0x01
+#define SPI_MODE_READ   0x02
+#define SPI_MODE_WRITE  0x03
+#define SPI_KP_READ     0x04
+#define SPI_KP_WRITE    0x05
+#define SPI_KI_READ     0x06
+#define SPI_KI_WRITE    0x07
+#define SPI_KD_READ     0x08
+#define SPI_KD_WRITE    0x09
 
-
-// UART parameters -----------------------------------------------------------//
-#define ACK_MASTER 0x5E
-#define ACK_SLAVE  0xE5
-
-#define COM_W_CONSIGNE      0x01
-#define COM_W_MODE          0x02
-#define COM_W_POSITION      0x03
-#define COM_W_CONFIG        0x04
-#define COM_R_POSITION      0x05
-#define COM_R_VITESSE       0x06
-#define COM_R_ACCELERATION  0x07
-#define COM_R_COURANT       0x08
-#define COM_R_ERREUR        0x09
-#define COM_R_CONFIG        0x0A
-#define COM_R_ID_BOARD      0x0B
-#define COM_W_MOT_CONF      0x0C
-#define COM_R_MOT_CONF      0x0D
-
-#define DATA_W_MODE          1
-#define DATA_R_ERREUR        1
-#define DATA_R_VITESSE       3
-#define DATA_R_ACCELERATION  3
-#define DATA_R_COURANT       3
-#define DATA_W_POSITION      4
-#define DATA_R_POSITION      5
-#define DATA_R_ID_BOARD      6
-#define DATA_W_MOT_CONF      7
-#define DATA_R_MOT_CONF      8
-#define DATA_W_CONSIGNE      11
-#define DATA_W_CONFIG        18
-#define DATA_R_CONFIG        19
-
-#define NB_FONCTION          13
-#define COM_ERREUR_FUNC_UNCKNOW     0xF6
-
+#define SPI_UNCKNOW     0xF6
+#define SPI_NO_DATA     0xF7
 
 // Mode of state machine -----------------------------------------------------//
-#define MODE_STOP      0x00
-#define MODE_OPEN      0x01
-#define MODE_ASSER     0x02
-
-#define NB_MODE        3
-
 #define STOP    0x00
 #define OPEN    0x01
 #define LOOP    0x02
 
+// Functions -----------------------------------------------------------------//
+void initIOs();
+void initTimer();
+void initSPI();
+void initPWM();
+void initADC();
+void initInterruptFromEncoderSensor();
+void initInterruptFromHallSensor();
+void initDriver(void);
 
-// Structures ----------------------------------------------------------------//
-// Data communication for SPI.
-typedef struct
-{
-    unsigned char commande;
-    unsigned char data[25];
-} trame_SPI;
+void process_LED();
+void process_current();
+void process_mode();
 
+unsigned char process_SPI(unsigned char data);
+unsigned char process_SPI_target(unsigned char data);
+unsigned char process_SPI_modeRead();
+unsigned char process_SPI_modeWrite(unsigned char data);
+unsigned char process_SPI_kpRead();
+unsigned char process_SPI_kpWrite(unsigned char data);
+unsigned char process_SPI_kiRead();
+unsigned char process_SPI_kiWrite(unsigned char data);
+unsigned char process_SPI_kdRead();
+unsigned char process_SPI_kdWrite(unsigned char data);
 
-// Interupt functions --------------------------------------------------------//
+void processMonitoring(long frequency);
+void processLoop(long frequency);
+
+unsigned char checkIfFunctionExist();
+
+// Interrupt functions -------------------------------------------------------//
 void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void);
 void __attribute__((interrupt, no_auto_psv)) _T2Interrupt(void);
-//void __attribute__((interrupt, no_auto_psv)) _T3Interrupt(void)
-//void __attribute__((interrupt, no_auto_psv)) _U1TXInterrupt(void);
-void __attribute__((interrupt, no_auto_psv)) _U1RXInterrupt(void);
-//void __attribute__((interrupt, no_auto_psv)) _OC1Interrupt(void);
+void __attribute__((interrupt, no_auto_psv)) _T4Interrupt(void);
 void __attribute__((interrupt, no_auto_psv)) _SPI1Interrupt(void);
 void __attribute__((interrupt, no_auto_psv)) _QEIInterrupt(void);
 void __attribute__((interrupt, no_auto_psv)) _INT2Interrupt(void);
 
-
-// Functions -----------------------------------------------------------------//
-void Configure_pins(void);
-void InitFonctionRecep(void);
-void InitDriver(void);
-unsigned int read_analog_channel(int channel);
-void WriteSPI1_c(unsigned char c);
-void Gestion_RW_Wconsigne(void);
-void Gestion_RW_Wmode(void);
-void Gestion_RW_Wposition(void);
-void Gestion_RW_Wconfig(void);
-void Gestion_RW_Rposition(void);
-void Gestion_RW_Rvitesse(void);
-void Gestion_RW_Racceleration(void);
-void Gestion_RW_Rcourant(void);
-void Gestion_RW_Rerreur(void);
-void Gestion_RW_Rconfig(void);
-void Gestion_RW_Rid(void);
-void Gestion_RW_Wmot_conf(void);
-void Gestion_RW_Rmot_conf(void);
-void Gestion_LED(unsigned int freq);
-void Gestion_Courant(void);
-unsigned int received_spi1(void);
-void send_spi1(unsigned int mtdata);
-void InitVariable(void);
-
-#endif	/* DRIVER_DSPIC_H */
+#endif	/* _MAIN_H_ */

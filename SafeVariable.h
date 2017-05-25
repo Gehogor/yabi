@@ -6,69 +6,48 @@
  *   | | / ____ \ | |_) |_| |_
  *   |_|/_/    \_\|____/|_____|
  *
- * File:   SharedVarLib.h
- * Author: Yann
+ * File:   SafeVarLib.h
+ * Yann Alonso and Jerome Chemouny
  *
  * Created on 25 avril 2016, 19:01
  */
 
-#ifndef _SHAREDVARLIB__H
-#define	_SHAREDVARLIB_H_
+#ifndef _SAFEVARIABLE_H_
+#define	_SAFEVARIABLE_H_
+
+// 32 bits signed management -------------------------------------------------//
+
+union S32_U8 {
+    unsigned char c[4];
+    long l;
+};
 
 typedef struct {
-    unsigned char index;
-    unsigned char data[2];
-} safe_u8;
+    unsigned char reader;
+    unsigned char writer;
+    union S32_U8 buffer[2];
+} SafeData_s32;
+
+long toS32_s32(SafeData_s32* data);
+void fromS32_s32(SafeData_s32* data, long value);
+unsigned char toU8_s32(SafeData_s32* data, unsigned char index);
+void fromU8_s32(SafeData_s32* data, unsigned char value, unsigned char index);
+
+// 16 bits unsigned management -----------------------------------------------//
+
+union U16_U8 {
+    unsigned char c[2];
+    unsigned int i;
+};
 
 typedef struct {
-    unsigned char index;
-    unsigned int data[2];
-} safe_u16;
+    unsigned char reader;
+    unsigned char writer;
+    union U16_U8 buffer[2];
+} SafeData_u16;
 
-typedef struct {
-    unsigned char index;
-    unsigned long int data[2];
-} safe_u32;
+unsigned int toU16_u16(SafeData_u16* data);
+unsigned char toU8_u16(SafeData_u16* data, unsigned char index);
+void fromU16_u16(SafeData_u16* data, unsigned int value);
 
-typedef struct {
-    unsigned char index;
-    signed char data[2];
-} safe_s8;
-
-typedef struct {
-    unsigned char index;
-    signed int data[2];
-} safe_s16;
-
-typedef struct {
-    unsigned char index;
-    signed long int data[2];
-} safe_s32;
-
-void init_u8(safe_u8* var, unsigned char value);
-void write_u8(safe_u8* var, unsigned char value);
-unsigned char read_u8(safe_u8* var);
-
-void init_u16(safe_u16* var, unsigned int value);
-void write_u16(safe_u16* var, unsigned int value);
-unsigned int read_u16(safe_u16* var);
-
-void init_u32(safe_u32* var, unsigned long int value);
-void write_u32(safe_u32* var, unsigned long int value);
-unsigned long int read_u32(safe_u32* var);
-
-void init_s8(safe_s8* var, signed char value);
-void write_s8(safe_s8* var, signed char value);
-signed char read_s8(safe_s8* var);
-
-void init_s16(safe_s16* var, signed int value);
-void write_s16(safe_s16* var, signed int value);
-signed int read_s16(safe_s16* var);
-
-void init_s32(safe_s32* var, signed long int value);
-void write_s32(safe_s32* var, signed long int value);
-signed long int read_u32(safe_s32* var);
-
-unsigned char inverseIndex(unsigned char index);
-
-#endif	/* _SHAREDVARLIB_H */
+#endif	/* _SAFEVARIABLE_H_ */
