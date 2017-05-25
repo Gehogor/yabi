@@ -67,15 +67,12 @@
 // Communication parameters --------------------------------------------------//
 #define SPI_START       0x5E
 #define SPI_END         0xE5
+#define SPI_NO_DATA     0xF5
 #define SPI_TARGET      0x01
 #define SPI_MODE_READ   0x02
 #define SPI_MODE_WRITE  0x03
-#define SPI_KP_READ     0x04
-#define SPI_KP_WRITE    0x05
-#define SPI_KI_READ     0x06
-#define SPI_KI_WRITE    0x07
-#define SPI_KD_READ     0x08
-#define SPI_KD_WRITE    0x09
+#define SPI_PID_READ    0x04
+#define SPI_PID_WRITE   0x05
 
 // Global errors -------------------------------------------------------------//
 #define NO_ERROR        0x00
@@ -105,12 +102,8 @@ unsigned char process_SPI(unsigned char data);
 unsigned char process_SPI_target(unsigned char data);
 unsigned char process_SPI_modeRead(unsigned char data);
 unsigned char process_SPI_modeWrite(unsigned char data);
-unsigned char process_SPI_kpRead(unsigned char data);
-unsigned char process_SPI_kpWrite(unsigned char data);
-unsigned char process_SPI_kiRead(unsigned char data);
-unsigned char process_SPI_kiWrite(unsigned char data);
-unsigned char process_SPI_kdRead(unsigned char data);
-unsigned char process_SPI_kdWrite(unsigned char data);
+unsigned char process_SPI_PID_read(unsigned char data);
+unsigned char process_SPI_PID_write(unsigned char data);
 
 void processMonitoring(long frequency);
 void processLoop(long frequency);

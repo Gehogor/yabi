@@ -407,28 +407,12 @@ unsigned char process_SPI( unsigned char data )
                 result = process_SPI_modeWrite(data);
                 break;
 
-            case SPI_KP_READ:
-                result = process_SPI_kpRead(data);
+            case SPI_PID_READ:
+                result = process_SPI_PID_read(data);
                 break;
 
-            case SPI_KP_WRITE:
-                result = process_SPI_kpWrite(data);
-                break;
-
-            case SPI_KI_READ:
-                result = process_SPI_kiRead(data);
-                break;
-
-            case SPI_KI_WRITE:
-                result = process_SPI_kiWrite(data);
-                break;
-
-            case SPI_KD_READ:
-                result = process_SPI_kdRead(data);
-                break;
-
-            case SPI_KD_WRITE:
-                result = process_SPI_kdWrite(data);
+            case SPI_PID_WRITE:
+                result = process_SPI_PID_write(data);
                 break;
         }
 
@@ -503,47 +487,64 @@ unsigned char process_SPI_modeWrite( unsigned char data )
     return SPI_ERROR_DATA;
 }
 
-unsigned char process_SPI_kpRead( unsigned char data )
+unsigned char process_SPI_PID_read( unsigned char data )
 {
     if(g_spi.index < 4)
     {
         if(g_spi.index == 0)
-            spi_kp.l = g_kp;
+        {
+            spi_kp.l = g_kp * 65536.0;
+            spi_ki.l = g_ki * 65536.0;
+            spi_kd.l = g_kd * 65536.0;
+        }
         return spi_kp.c[g_spi.index];
     }
-    else if(g_spi.index == 4 && data == SPI_END)
+    else if(g_spi.index >= 4 && g_spi.index < 8)
+    {
+        return spi_ki.c[g_spi.index - 4];
+    }
+    else if(g_spi.index >= 8 && g_spi.index < 12)
+    {
+        return spi_kd.c[g_spi.index - 8];
+    }
+    else if(g_spi.index == 12 && data == SPI_END)
     {
         g_spi.functionCount = 0;
         return NO_ERROR;
     }
-    
+
     g_spi.functionCount = 0;
     return SPI_ERROR_DATA;
 }
 
-unsigned char process_SPI_kpWrite( unsigned char data )
+unsigned char process_SPI_PID_write( unsigned char data )
 {
+    if(g_spi.index < 4)
+    {
+        spi_kp.c[g_spi.index] = data;
+        return SPI_NO_DATA;
+    }
+    else if(g_spi.index >= 4 && g_spi.index < 8)
+    {
+        spi_ki.c[g_spi.index - 4] = data;
+        return SPI_NO_DATA;
+    }
+    else if(g_spi.index >= 8 && g_spi.index < 12)
+    {
+        spi_kd.c[g_spi.index - 8] = data;
+        return SPI_NO_DATA;
+    }
+    else if(g_spi.index == 12 && data == SPI_END)
+    {
+        g_kp = spi_kp.l / 65536.0;
+        g_ki = spi_ki.l / 65536.0;
+        g_kd = spi_kd.l / 65536.0;
+        g_spi.functionCount = 0;
+        return NO_ERROR;
+    }
 
-}
-
-unsigned char process_SPI_kiRead( unsigned char data )
-{
-
-}
-
-unsigned char process_SPI_kiWrite( unsigned char data )
-{
-
-}
-
-unsigned char process_SPI_kdRead( unsigned char data )
-{
-
-}
-
-unsigned char process_SPI_kdWrite( unsigned char data )
-{
-
+    g_spi.functionCount = 0;
+    return SPI_ERROR_DATA;
 }
 
 void processMonitoring( long frequency )
@@ -561,7 +562,7 @@ void processLoop( long frequency )
         return;
 
     double posError = g_targetPositionUnit - g_positionUnit;
-    double cmd = posError * toS32_s32(&spi_kp) / 65536.0;
+    double cmd = posError * g_kp / 65536.0;
 
     // Offset for the PWM (0 -> 1480)
     cmd += HALF_PWM_MAX;
@@ -582,12 +583,8 @@ unsigned char checkIfFunctionExist( )
         case SPI_TARGET:
         case SPI_MODE_READ:
         case SPI_MODE_WRITE:
-        case SPI_KP_READ:
-        case SPI_KP_WRITE:
-        case SPI_KI_READ:
-        case SPI_KI_WRITE:
-        case SPI_KD_READ:
-        case SPI_KD_WRITE:
+        case SPI_PID_READ:
+        case SPI_PID_WRITE:
             return g_spi.function;
     }
 
