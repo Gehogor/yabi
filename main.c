@@ -34,20 +34,20 @@
 #include "YaXiType.h"
 
 // Axis parameters
-volatile long g_positionUnit = 0;
-volatile long g_speedUnit = 0;
-volatile long g_accelUnit = 0;
+SafeData_S32 g_position = {.value = 0};
+SafeData_S32 g_speed = {.value = 0};
+SafeData_S32 g_accel = {.value = 0};
 volatile long g_hallUnit = 0;
 
-volatile long g_targetPositionUnit = 0;
-volatile long g_targetSpeedUnit = 0;
+SafeData_S32 g_targetPos = {.value = 0};
+SafeData_S32 g_targetSpeed = {.value = 0};
 
-volatile unsigned char g_mode = STOP;
+SafeData_U8 g_mode = {.bus = STOP,.value = STOP};
 volatile unsigned char g_error = 0;
 
-volatile double g_kp = 0;
-volatile double g_ki = 0;
-volatile double g_kd = 0;
+SafeData_D32 g_kp = {.value = 0.0};
+SafeData_D32 g_ki = {.value = 0.0};
+SafeData_D32 g_kd = {.value = 0.0};
 
 long g_lastPositionUnit = 0;
 long g_lastSpeedUnit = 0;
@@ -64,6 +64,7 @@ Led g_led = {.timer = 0,.frequency = LED_FREQ_10HZ};
 // Current management
 typedef struct
 {
+    union U16_U8 bus;
     unsigned char timer;
     unsigned char state;
     unsigned long measure;
@@ -72,39 +73,10 @@ typedef struct
 } Current;
 Current g_current = {.timer = 0,.state = 0,.measure = 0,.average = 0};
 
-// SPI management
-typedef struct
-{
-    unsigned char functionCount;
-    unsigned char index;
-    unsigned char function;
-} Com_SPI;
-Com_SPI g_spi = {.functionCount = 0,.index = 0,.function = 0};
-
-// Loop PID managmement
-typedef struct
-{
-    unsigned int timer;
-} ControlLoop;
-ControlLoop g_cl = {.timer = 0};
-
-// SPI Data management
-union S32_U8 spi_targetPos;
-union S32_U8 spi_targetSpeed;
-union S32_U8 spi_position;
-union S32_U8 spi_speed;
-union S32_U8 spi_accel;
-
-unsigned char spi_mode;
-union U16_U8 spi_current;
-
-union S32_U8 spi_kp;
-union S32_U8 spi_ki;
-union S32_U8 spi_kd;
-
-
-// Main function.
-
+/**
+ * Main function, manage all initialization and continuous process.
+ * @return 0 at the end of program.
+ */
 int main( )
 {
     initIOs();
@@ -345,9 +317,9 @@ void process_current( )
 
 void process_mode( )
 {
-    if(g_mode != g_lastMode)
+    if(g_mode.value != g_lastMode)
     {
-        switch(g_mode)
+        switch(g_mode.value)
         {
             case STOP:
                 DRIVER_COAST = 0;//Mise off du Driver
@@ -370,26 +342,26 @@ void process_mode( )
                 g_led.frequency = LED_FREQ_1HZ;
                 break;
         }
-        g_lastMode = g_mode;
+        g_lastMode = g_mode.value;
     }
 }
 
 void process_monitoring( long frequency )
 {
-    g_speedUnit = (g_positionUnit - g_lastPositionUnit) * frequency;
-    g_accelUnit = (g_speedUnit - g_lastSpeedUnit) * frequency;
+    g_speed.value = (g_position.value - g_lastPositionUnit) * frequency;
+    g_accel.value = (g_speed.value - g_lastSpeedUnit) * frequency;
 
-    g_lastPositionUnit = g_positionUnit;
-    g_lastSpeedUnit = g_speedUnit;
+    g_lastPositionUnit = g_position.value;
+    g_lastSpeedUnit = g_speed.value;
 }
 
 void process_loop( long frequency )
 {
-    if(g_mode != LOOP)
+    if(g_mode.value != LOOP)
         return;
 
-    double posError = g_targetPositionUnit - g_positionUnit;
-    double cmd = posError * g_kp / 65536.0;
+    double posError = g_targetPos.value - g_position.value;
+    double cmd = posError * g_kp.value / 65536.0;
 
     // Offset for the PWM (0 -> 1480)
     cmd += HALF_PWM_MAX;
@@ -459,32 +431,32 @@ unsigned char process_SPI_target( unsigned char data )
     {
         if(g_spi.index == 0)
         {
-            spi_position.l = g_positionUnit;
-            spi_speed.l = g_speedUnit;
-            spi_accel.l = g_accelUnit;
-            spi_current.i = g_current.value;
+            g_position.bus.l = g_position.value;
+            g_speed.bus.l = g_speed.value;
+            g_accel.bus.l = g_accel.value;
+            g_current.bus.i = g_current.value;
         }
 
-        spi_targetPos.c[g_spi.index] = data;
-        return spi_position.c[g_spi.index];
+        g_targetPos.bus.c[g_spi.index] = data;
+        return g_position.bus.c[g_spi.index];
     }
     else if(g_spi.index >= 4 && g_spi.index < 8)
     {
-        spi_targetSpeed.c[g_spi.index - 4] = data;
-        return spi_speed.c[g_spi.index - 4];
+        g_targetSpeed.bus.c[g_spi.index - 4] = data;
+        return g_speed.bus.c[g_spi.index - 4];
     }
     else if(g_spi.index >= 8 && g_spi.index < 12)
     {
-        return spi_accel.c[g_spi.index - 8];
+        return g_accel.bus.c[g_spi.index - 8];
     }
     else if(g_spi.index >= 12 && g_spi.index < 14)
     {
-        return spi_current.c[g_spi.index - 12];
+        return g_current.bus.c[g_spi.index - 12];
     }
     else if(g_spi.index == 14 && data == SPI_END)
     {
-        g_targetPositionUnit = spi_targetPos.l;
-        g_targetSpeedUnit = spi_targetSpeed.l;
+        g_targetPos.value = g_targetPos.bus.l;
+        g_targetSpeed.value = g_targetSpeed.bus.l;
         g_spi.functionCount = 0;
         return NO_ERROR;
     }
@@ -498,7 +470,7 @@ unsigned char process_SPI_modeRead( unsigned char data )
     g_spi.functionCount = 0;
 
     if(g_spi.index == 0 && data == SPI_END)
-        return g_mode;
+        return g_mode.value;
 
     return SPI_ERROR_DATA;
 }
@@ -506,10 +478,10 @@ unsigned char process_SPI_modeRead( unsigned char data )
 unsigned char process_SPI_modeWrite( unsigned char data )
 {
     if(g_spi.index == 0)
-        spi_mode = data;
+        g_mode.bus = data;
     else if(g_spi.index == 1 && data == SPI_END)
     {
-        g_mode = spi_mode;
+        g_mode.value = g_mode.bus;
         g_spi.functionCount = 0;
         return NO_ERROR;
     }
@@ -524,19 +496,19 @@ unsigned char process_SPI_PID_read( unsigned char data )
     {
         if(g_spi.index == 0)
         {
-            spi_kp.l = g_kp * 65536.0;
-            spi_ki.l = g_ki * 65536.0;
-            spi_kd.l = g_kd * 65536.0;
+            g_kp.bus.l = g_kp.value * 65536.0;
+            g_ki.bus.l = g_ki.value * 65536.0;
+            g_kd.bus.l = g_kd.value * 65536.0;
         }
-        return spi_kp.c[g_spi.index];
+        return g_kp.bus.c[g_spi.index];
     }
     else if(g_spi.index >= 4 && g_spi.index < 8)
     {
-        return spi_ki.c[g_spi.index - 4];
+        return g_ki.bus.c[g_spi.index - 4];
     }
     else if(g_spi.index >= 8 && g_spi.index < 12)
     {
-        return spi_kd.c[g_spi.index - 8];
+        return g_kd.bus.c[g_spi.index - 8];
     }
     else if(g_spi.index == 12 && data == SPI_END)
     {
@@ -552,24 +524,24 @@ unsigned char process_SPI_PID_write( unsigned char data )
 {
     if(g_spi.index < 4)
     {
-        spi_kp.c[g_spi.index] = data;
+        g_kp.bus.c[g_spi.index] = data;
         return SPI_NO_DATA;
     }
     else if(g_spi.index >= 4 && g_spi.index < 8)
     {
-        spi_ki.c[g_spi.index - 4] = data;
+        g_ki.bus.c[g_spi.index - 4] = data;
         return SPI_NO_DATA;
     }
     else if(g_spi.index >= 8 && g_spi.index < 12)
     {
-        spi_kd.c[g_spi.index - 8] = data;
+        g_kd.bus.c[g_spi.index - 8] = data;
         return SPI_NO_DATA;
     }
     else if(g_spi.index == 12 && data == SPI_END)
     {
-        g_kp = spi_kp.l / 65536.0;
-        g_ki = spi_ki.l / 65536.0;
-        g_kd = spi_kd.l / 65536.0;
+        g_kp.value = g_kp.bus.l / 65536.0;
+        g_ki.value = g_ki.bus.l / 65536.0;
+        g_kd.value = g_kd.bus.l / 65536.0;
         g_spi.functionCount = 0;
         return NO_ERROR;
     }
@@ -582,12 +554,12 @@ unsigned char process_SPI_positionWrite( unsigned char data )
 {
     if(g_spi.index < 4)
     {
-        spi_position.c[g_spi.index] = data;
+        g_position.bus.c[g_spi.index] = data;
         return SPI_NO_DATA;
     }
     else if(g_spi.index == 4 && data == SPI_END)
     {
-        g_positionUnit = spi_position.l;
+        g_position.value = g_position.bus.l;
         g_spi.functionCount = 0;
         return NO_ERROR;
     }
@@ -682,9 +654,9 @@ void __attribute__( (interrupt,no_auto_psv) ) _QEIInterrupt( void )
 
     // Counter unit from coder pulse.
     if(QEICONbits.UPDN)
-        g_positionUnit++;
+        g_position.value++;
     else
-        g_positionUnit--;
+        g_position.value--;
 }
 
 /**

@@ -41,18 +41,44 @@
 #define OPEN    0x01
 #define LOOP    0x02
 
-// 32 bits signed management -------------------------------------------------//
-
+/* Data management -----------------------------------------------------------*/
 union S32_U8 {
     unsigned char c[4];
     long l;
 };
 
-// 16 bits unsigned management -----------------------------------------------//
-
 union U16_U8 {
     unsigned char c[2];
     unsigned int i;
 };
+
+typedef struct {
+    union S32_U8 bus;
+    volatile long value;
+} SafeData_S32;
+
+typedef struct {
+    union S32_U8 bus;
+    volatile double value;
+} SafeData_D32;
+
+typedef struct {
+    unsigned char bus;
+    volatile unsigned char value;
+} SafeData_U8;
+
+/* SPI management ------------------------------------------------------------*/
+typedef struct {
+    unsigned char functionCount;
+    unsigned char index;
+    unsigned char function;
+} Com_SPI;
+Com_SPI g_spi = {.functionCount = 0, .index = 0, .function = 0};
+
+/* Position interpolation ----------------------------------------------------*/
+typedef struct {
+    unsigned int timer;
+} Interpolation;
+Interpolation g_cl = {.timer = 0};
 
 #endif	/* _YAXITYPE_H_ */
