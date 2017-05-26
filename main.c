@@ -73,6 +73,9 @@ typedef struct
 } Current;
 Current g_current = {.timer = 0,.state = 0,.measure = 0,.average = 0};
 
+Com_SPI g_spi = {.functionCount = 0, .index = 0, .function = 0};
+Interpolation g_cl = {.timer = 0};
+
 /**
  * Main function, manage all initialization and continuous process.
  * @return 0 at the end of program.

@@ -73,12 +73,10 @@ typedef struct {
     unsigned char index;
     unsigned char function;
 } Com_SPI;
-Com_SPI g_spi = {.functionCount = 0, .index = 0, .function = 0};
 
 /* Position interpolation ----------------------------------------------------*/
 typedef struct {
     unsigned int timer;
 } Interpolation;
-Interpolation g_cl = {.timer = 0};
 
 #endif	/* _YAXITYPE_H_ */
