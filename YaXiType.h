@@ -76,7 +76,8 @@ typedef struct {
 
 /* Position interpolation ----------------------------------------------------*/
 typedef struct {
-    unsigned int timer;
+    unsigned int cyclic;
+    unsigned int index;
 } Interpolation;
 
 #endif	/* _YAXITYPE_H_ */

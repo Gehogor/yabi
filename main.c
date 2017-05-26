@@ -33,7 +33,7 @@
 #include "Config.h"
 #include "YaXiType.h"
 
-// Axis parameters
+// Axis parameters -----------------------------------------------------------//
 SafeData_S32 g_position = {.value = 0};
 SafeData_S32 g_speed = {.value = 0};
 SafeData_S32 g_accel = {.value = 0};
@@ -53,7 +53,7 @@ long g_lastPositionUnit = 0;
 long g_lastSpeedUnit = 0;
 unsigned char g_lastMode = 0;
 
-// Led managmement
+// Led managmement -----------------------------------------------------------//
 typedef struct
 {
     unsigned int timer;
@@ -61,7 +61,7 @@ typedef struct
 } Led;
 Led g_led = {.timer = 0,.frequency = LED_FREQ_10HZ};
 
-// Current management
+// Current management --------------------------------------------------------//
 typedef struct
 {
     union U16_U8 bus;
@@ -73,8 +73,11 @@ typedef struct
 } Current;
 Current g_current = {.timer = 0,.state = 0,.measure = 0,.average = 0};
 
-Com_SPI g_spi = {.functionCount = 0, .index = 0, .function = 0};
-Interpolation g_cl = {.timer = 0};
+// SPI workflow management ---------------------------------------------------//
+Com_SPI g_spi = {.functionCount = 0,.index = 0,.function = 0};
+
+// Close loop interpolation management ---------------------------------------//
+Interpolation g_cl = {.cyclic = 0,.index = 0};
 
 /**
  * Main function, manage all initialization and continuous process.
