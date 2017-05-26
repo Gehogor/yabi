@@ -23,7 +23,7 @@
 // Communication parameters --------------------------------------------------//
 #define SPI_START           0x5E
 #define SPI_END             0xE5
-#define SPI_NO_DATA         0xF5
+#define SPI_NO_DATA         0x55
 #define SPI_TARGET          0x01
 #define SPI_MODE_READ       0x02
 #define SPI_MODE_WRITE      0x03
@@ -32,7 +32,6 @@
 #define SPI_POSITION_WRITE  0x06
 
 // Global errors -------------------------------------------------------------//
-#define NO_ERROR        0x00
 #define SPI_UNCKNOW     0xF6
 #define SPI_ERROR_DATA  0xF7
 

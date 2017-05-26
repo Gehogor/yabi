@@ -388,6 +388,7 @@ unsigned char process_SPI( unsigned char data )
     if(g_spi.functionCount == 0 && data == SPI_START)
     {
         g_spi.functionCount++;
+        result = SPI_START;
     }
     else if(g_spi.functionCount == 1)
     {
@@ -464,7 +465,7 @@ unsigned char process_SPI_target( unsigned char data )
         g_targetPos.value = g_targetPos.bus.l;
         g_targetSpeed.value = g_targetSpeed.bus.l;
         g_spi.functionCount = 0;
-        return NO_ERROR;
+        return SPI_END;
     }
 
     g_spi.functionCount = 0;
@@ -489,7 +490,7 @@ unsigned char process_SPI_modeWrite( unsigned char data )
     {
         g_mode.value = g_mode.bus;
         g_spi.functionCount = 0;
-        return NO_ERROR;
+        return SPI_END;
     }
 
     g_spi.functionCount = 0;
@@ -519,7 +520,7 @@ unsigned char process_SPI_PID_read( unsigned char data )
     else if(g_spi.index == 12 && data == SPI_END)
     {
         g_spi.functionCount = 0;
-        return NO_ERROR;
+        return SPI_END;
     }
 
     g_spi.functionCount = 0;
@@ -549,7 +550,7 @@ unsigned char process_SPI_PID_write( unsigned char data )
         g_ki.value = g_ki.bus.l / 65536.0;
         g_kd.value = g_kd.bus.l / 65536.0;
         g_spi.functionCount = 0;
-        return NO_ERROR;
+        return SPI_END;
     }
 
     g_spi.functionCount = 0;
@@ -567,7 +568,7 @@ unsigned char process_SPI_positionWrite( unsigned char data )
     {
         g_position.value = g_position.bus.l;
         g_spi.functionCount = 0;
-        return NO_ERROR;
+        return SPI_END;
     }
 
     g_spi.functionCount = 0;
