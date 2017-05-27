@@ -37,12 +37,14 @@
 SafeData_S32 g_position = {.value = 0};
 SafeData_S32 g_speed = {.value = 0};
 SafeData_S32 g_accel = {.value = 0};
+
+volatile long g_encoderU16 = 0;
 volatile long g_hallUnit = 0;
 
 SafeData_S32 g_targetPos = {.value = 0};
 SafeData_S32 g_targetSpeed = {.value = 0};
 
-SafeData_U8 g_mode = {.bus = STOP,.value = STOP};
+SafeData_U8 g_mode = {.bus = STOP,.value = OPEN};
 volatile unsigned char g_error = 0;
 
 SafeData_D32 g_kp = {.value = 0.0};
@@ -51,7 +53,7 @@ SafeData_D32 g_kd = {.value = 0.0};
 
 long g_lastPositionUnit = 0;
 long g_lastSpeedUnit = 0;
-unsigned char g_lastMode = 0;
+unsigned char g_lastMode = 0xFF;
 
 // Led managmement -----------------------------------------------------------//
 typedef struct
@@ -88,6 +90,7 @@ int main( )
     initIOs();
     initTimer();
     initSPI();
+    initPWM();
     initADC();
     initInterruptFromEncoderSensor();
     initInterruptFromHallSensor();
@@ -167,7 +170,7 @@ void initTimer( )
     OpenTimer4(T4_ON
                & T4_IDLE_STOP
                & T4_GATE_OFF
-               & T4_PS_1_256
+               & T4_PS_1_64
                & T4_SOURCE_INT
                ,
                PR_T4);
@@ -244,12 +247,13 @@ void initInterruptFromEncoderSensor( )
 {
     ConfigIntQEI(QEI_INT_PRI_6 & QEI_INT_ENABLE);
     POSCNT = 0;
-    MAXCNT = 0x7FFF;
+    MAXCNT = 0xFFFF;
     OpenQEI(QEI_IDLE_CON
             & QEI_INT_CLK
             & QEI_INDEX_RESET_DISABLE
             & QEI_CLK_PRESCALE_1
-            & QEI_GATED_ACC_DISABLE & QEI_INPUTS_NOSWAP
+            & QEI_GATED_ACC_DISABLE
+            & QEI_INPUTS_NOSWAP
             & QEI_MODE_x4_MATCH
             & QEI_DIR_SEL_CNTRL
             ,
@@ -258,7 +262,6 @@ void initInterruptFromEncoderSensor( )
             & QEI_QE_OUT_ENABLE
             & MATCH_INDEX_PHASEA_HIGH
             & MATCH_INDEX_PHASEB_HIGH);
-    QEICONbits.UPDN = 1;
 }
 
 void initInterruptFromHallSensor( )
@@ -271,8 +274,14 @@ void initInterruptFromHallSensor( )
 
 void initDriver( void )
 {
+    // Select fast-decay mode, better for start, stop and positioning
+    // application.
     DRIVER_MODE = 0;
+
+    // Turn all FETs off.
     DRIVER_COAST = 0;
+
+    // Choose a default direction.
     DRIVER_DIR = 1;
 }
 
@@ -330,12 +339,13 @@ void process_mode( )
             case STOP:
                 DRIVER_COAST = 0;//Mise off du Driver
                 SetDCOC1PWM(HALF_PWM_MAX);
-                g_led.frequency = LED_FREQ_10HZ;
+                g_led.frequency = LED_FREQ_2HZ;
                 break;
 
             case OPEN:
                 DRIVER_COAST = 1;//Mise on du Driver
-                g_led.frequency = LED_FREQ_2HZ;
+                SetDCOC1PWM(HALF_PWM_MAX + 10);
+                g_led.frequency = LED_FREQ_10HZ;
                 break;
 
             case LOOP:
@@ -354,6 +364,9 @@ void process_mode( )
 
 void process_monitoring( long frequency )
 {
+    // Compute the exact position according to 16 bit overflow from QEI module.
+    g_position.value = g_encoderU16 + ReadQEI();
+
     g_speed.value = (g_position.value - g_lastPositionUnit) * frequency;
     g_accel.value = (g_speed.value - g_lastSpeedUnit) * frequency;
 
@@ -485,7 +498,10 @@ unsigned char process_SPI_modeRead( unsigned char data )
 unsigned char process_SPI_modeWrite( unsigned char data )
 {
     if(g_spi.index == 0)
+    {
         g_mode.bus = data;
+        return SPI_NO_DATA;
+    }
     else if(g_spi.index == 1 && data == SPI_END)
     {
         g_mode.value = g_mode.bus;
@@ -566,6 +582,9 @@ unsigned char process_SPI_positionWrite( unsigned char data )
     }
     else if(g_spi.index == 4 && data == SPI_END)
     {
+        g_encoderU16 = g_position.bus.l & 0xFFFF0000;
+        WriteQEI(g_position.bus.l);
+
         g_position.value = g_position.bus.l;
         g_spi.functionCount = 0;
         return SPI_END;
@@ -659,11 +678,11 @@ void __attribute__( (interrupt,no_auto_psv) ) _QEIInterrupt( void )
     // Clear QEI interrupt flag.
     _QEIIF = 0;
 
-    // Counter unit from coder pulse.
+    // Check if there is an 16 bits overflow.
     if(QEICONbits.UPDN)
-        g_position.value++;
+        g_encoderU16 += 0xFFFF;
     else
-        g_position.value--;
+        g_encoderU16 -= 0xFFFF;
 }
 
 /**

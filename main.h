@@ -53,10 +53,10 @@
 // Led managmement -----------------------------------------------------------//
 #define LED             _LATE5
 #define LED_FREQ_0HZ    0
-#define LED_FREQ_10HZ   1
-#define LED_FREQ_5HZ    2
-#define LED_FREQ_2HZ    5
-#define LED_FREQ_1HZ    10
+#define LED_FREQ_10HZ   2
+#define LED_FREQ_5HZ    4
+#define LED_FREQ_2HZ    10
+#define LED_FREQ_1HZ    20
 
 // Functions -----------------------------------------------------------------//
 void initIOs();
