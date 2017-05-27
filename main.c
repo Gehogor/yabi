@@ -380,7 +380,7 @@ void process_loop( long frequency )
         return;
 
     double posError = g_targetPos.value - g_position.value;
-    double cmd = posError * g_kp.value / 65536.0;
+    double cmd = posError * g_kp.value;
 
     // Offset for the PWM (0 -> 1480)
     cmd += HALF_PWM_MAX;
