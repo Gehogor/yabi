@@ -44,7 +44,7 @@ volatile long g_hallUnit = 0;
 SafeData_S32 g_targetPos = {.value = 0};
 SafeData_S32 g_targetSpeed = {.value = 0};
 
-SafeData_U8 g_mode = {.bus = STOP,.value = OPEN};
+SafeData_U8 g_mode = {.bus = DRIVER_OPEN,.value = DRIVER_OPEN};
 volatile unsigned char g_error = 0;
 
 SafeData_D32 g_kp = {.value = 0.0};
@@ -336,19 +336,19 @@ void process_mode( )
     {
         switch(g_mode.value)
         {
-            case STOP:
+            case DRIVER_OPEN:
                 DRIVER_COAST = 0;//Mise off du Driver
                 SetDCOC1PWM(HALF_PWM_MAX);
                 g_led.frequency = LED_FREQ_2HZ;
                 break;
 
-            case OPEN:
+            case OPEN_LOOP:
                 DRIVER_COAST = 1;//Mise on du Driver
-                SetDCOC1PWM(HALF_PWM_MAX + 10);
+                SetDCOC1PWM(HALF_PWM_MAX);
                 g_led.frequency = LED_FREQ_10HZ;
                 break;
 
-            case LOOP:
+            case CLOSE_LOOP:
                 DRIVER_COAST = 1;//Mise on du Driver
                 g_led.frequency = LED_FREQ_5HZ;
                 break;
@@ -376,7 +376,7 @@ void process_monitoring( long frequency )
 
 void process_loop( long frequency )
 {
-    if(g_mode.value != LOOP)
+    if(g_mode.value != CLOSE_LOOP)
         return;
 
     double posError = g_targetPos.value - g_position.value;

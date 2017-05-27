@@ -36,9 +36,9 @@
 #define SPI_ERROR_DATA  0xF7
 
 // Mode of state machine -----------------------------------------------------//
-#define STOP    0x00
-#define OPEN    0x01
-#define LOOP    0x02
+#define DRIVER_OPEN 0x00
+#define OPEN_LOOP   0x01
+#define CLOSE_LOOP  0x02
 
 /* Data management -----------------------------------------------------------*/
 union S32_U8 {
