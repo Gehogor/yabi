@@ -247,7 +247,7 @@ void initInterruptFromEncoderSensor( )
 {
     ConfigIntQEI(QEI_INT_PRI_6 & QEI_INT_ENABLE);
     POSCNT = 0;
-    MAXCNT = 0xFFFF;
+    MAXCNT = 0x7FFF;
     OpenQEI(QEI_IDLE_CON
             & QEI_INT_CLK
             & QEI_INDEX_RESET_DISABLE
@@ -680,9 +680,9 @@ void __attribute__( (interrupt,no_auto_psv) ) _QEIInterrupt( void )
 
     // Check if there is an 16 bits overflow.
     if(QEICONbits.UPDN)
-        g_encoderU16 += 0xFFFF;
+        g_encoderU16 += 0x7FFF;
     else
-        g_encoderU16 -= 0xFFFF;
+        g_encoderU16 -= 0x7FFF;
 }
 
 /**
