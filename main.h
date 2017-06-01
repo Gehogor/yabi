@@ -19,7 +19,8 @@
 #include <adc10.h>
 
 // Timer parameters ----------------------------------------------------------//
-#define PR_T1   29500       // 1kHz
+//#define PR_T1   29500       // 1kHz
+#define PR_T1   1474        // 20kHz
 #define PR_T2   2938        // 10kHz
 #define PR_T3   1474        // 20kHz
 #define PR_T4   11480       // 10Hz
@@ -73,7 +74,6 @@ void process_current();
 void process_mode();
 unsigned char process_SPI();
 
-void process_monitoring();
 void process_loop();
 
 unsigned char process_SPI_target();

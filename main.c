@@ -79,7 +79,7 @@ Current g_current = {.timer = 0,.state = 0,.measure = 0,.average = 0};
 Com_SPI g_spi = {.index = 0};
 
 // Close loop interpolation management ---------------------------------------//
-Interpolation g_cl = {.frequency = 0,.index = 0};
+Interpolation g_cl = {.timer = 0,.frequency = 1000,.index = 0};
 
 /**
  * Main function, manage all initialization and continuous process.
@@ -102,13 +102,10 @@ int main( )
         process_current();
         process_mode();
 
-        if(process_SPI() != SPI_ERROR_DATA)
-        {
-            process_monitoring();
-            process_loop();
-        }
-        else
+        if(process_SPI() == SPI_ERROR_DATA)
             g_mode.value = DRIVER_OPEN;
+
+        process_loop();
     }
 
     CloseTimer1();
@@ -157,7 +154,7 @@ void initTimer( )
                & T1_GATE_OFF
                & T1_PS_1_1
                & T1_SYNC_EXT_OFF
-               &T1_SOURCE_INT
+               & T1_SOURCE_INT
                ,
                PR_T1);
 
@@ -168,7 +165,7 @@ void initTimer( )
                & T2_IDLE_STOP
                & T2_GATE_OFF
                & T2_PS_1_1
-               &T2_SOURCE_INT
+               & T2_SOURCE_INT
                ,
                PR_T2);
 
@@ -414,8 +411,13 @@ unsigned char process_SPI( )
     return SPI_ERROR_DATA;
 }
 
-void process_monitoring( )
+void process_loop( )
 {
+    if(g_cl.timer < 20000/g_cl.frequency)
+        return;
+
+    g_cl.timer = 0;
+
     // Compute the exact position according to 16 bit overflow from QEI module.
     g_position.value = g_encoderU16 + ReadQEI();
 
@@ -424,10 +426,7 @@ void process_monitoring( )
 
     g_lastPositionUnit = g_position.value;
     g_lastSpeedUnit = g_speed.value;
-}
 
-void process_loop( )
-{
     if(g_mode.value != CLOSE_LOOP)
         return;
 
@@ -448,7 +447,7 @@ void process_loop( )
 
 unsigned char process_SPI_target( )
 {
-    if(g_spi.rx[16] != SPI_END)
+    if(g_spi.rx[10] != SPI_END)
         return SPI_ERROR_DATA;
 
     // Get target position from SPI.
@@ -622,9 +621,7 @@ void __attribute__( (interrupt,no_auto_psv) ) _T1Interrupt( void )
 {
     WriteTimer1(0);
     _T1IF = 0;
-
-    process_monitoring(1000);
-    process_loop(1000);
+    g_cl.timer++;
 }
 
 /**

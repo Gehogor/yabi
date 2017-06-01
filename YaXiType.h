@@ -76,6 +76,7 @@ typedef struct {
 
 /* Position interpolation ----------------------------------------------------*/
 typedef struct {
+    unsigned int timer;
     long frequency;
     unsigned int index;
 } Interpolation;
