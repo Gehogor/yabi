@@ -7,7 +7,7 @@
  *   |_|/_/    \_\|____/|_____|
  *
  * File:   YaXiType.h
- * Author: Yann Alonso and Jérôme Chemouny
+ * Author: Yann Alonso and Jerome Chemouny
  *
  * Created on 25 may 2017
  */
@@ -16,14 +16,13 @@
 #define	_YAXITYPE_H_
 
 // Inverter parameters -------------------------------------------------------//
-#define TYPE_CARD 0x01  // Brushless invertor type.
+#define TYPE_CARD   0x01  // Brushless invertor type.
 #define IV_ENCODER  1
-#define IV_TACHY   0
+#define IV_TACHY    0
 
 // Communication parameters --------------------------------------------------//
 #define SPI_START           0x5E
 #define SPI_END             0xE5
-#define SPI_NO_DATA         0x55
 #define SPI_TARGET          0x01
 #define SPI_MODE_READ       0x02
 #define SPI_MODE_WRITE      0x03
@@ -31,9 +30,11 @@
 #define SPI_PID_WRITE       0x05
 #define SPI_POSITION_WRITE  0x06
 
-// Global errors -------------------------------------------------------------//
-#define SPI_UNCKNOW     0xF6
-#define SPI_ERROR_DATA  0xF7
+#define SPI_NO_DATA         0x00
+#define SPI_NO_ERROR        0x01
+#define SPI_UNCKNOW         0xF6
+#define SPI_ERROR_DATA      0xF7
+#define SPI_MAX_SIZE        17
 
 // Mode of state machine -----------------------------------------------------//
 #define DRIVER_OPEN 0x00
@@ -53,29 +54,29 @@ union U16_U8 {
 
 typedef struct {
     union S32_U8 bus;
-    volatile long value;
+    long value;
 } SafeData_S32;
 
 typedef struct {
     union S32_U8 bus;
-    volatile double value;
+    double value;
 } SafeData_D32;
 
 typedef struct {
     unsigned char bus;
-    volatile unsigned char value;
+    unsigned char value;
 } SafeData_U8;
 
 /* SPI management ------------------------------------------------------------*/
 typedef struct {
-    unsigned char functionCount;
-    unsigned char index;
-    unsigned char function;
+    volatile unsigned char index;
+    unsigned char rx[SPI_MAX_SIZE];
+    unsigned char tx[SPI_MAX_SIZE];
 } Com_SPI;
 
 /* Position interpolation ----------------------------------------------------*/
 typedef struct {
-    unsigned int cyclic;
+    long frequency;
     unsigned int index;
 } Interpolation;
 

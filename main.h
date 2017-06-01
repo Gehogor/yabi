@@ -71,18 +71,17 @@ void initDriver(void);
 void process_LED();
 void process_current();
 void process_mode();
-void process_monitoring(long frequency);
-void process_loop(long frequency);
+unsigned char process_SPI();
 
-unsigned char process_SPI(unsigned char data);
-unsigned char process_SPI_target(unsigned char data);
-unsigned char process_SPI_modeRead(unsigned char data);
-unsigned char process_SPI_modeWrite(unsigned char data);
-unsigned char process_SPI_PID_read(unsigned char data);
-unsigned char process_SPI_PID_write(unsigned char data);
-unsigned char process_SPI_positionWrite(unsigned char data);
+void process_monitoring();
+void process_loop();
 
-unsigned char checkIfFunctionExist();
+unsigned char process_SPI_target();
+unsigned char process_SPI_modeRead();
+unsigned char process_SPI_modeWrite();
+unsigned char process_SPI_PID_read();
+unsigned char process_SPI_PID_write();
+unsigned char process_SPI_positionWrite();
 
 // Interrupt functions -------------------------------------------------------//
 void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void);
