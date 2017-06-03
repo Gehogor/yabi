@@ -375,6 +375,7 @@ void process_mode( )
 
 unsigned char process_SPI( )
 {
+    // No SPI buffer treatment if it is not full.
     if(g_spi.index != SPI_MAX_SIZE)
         return SPI_NO_ERROR;
 
@@ -422,6 +423,7 @@ unsigned char process_SPI( )
 
 void process_loop( )
 {
+    // No process loop if the timer is not timeout.
     if(g_ctrl.timer < (T1_FREQ / g_ctrl.loopFrequency))
         return;
 
@@ -430,14 +432,13 @@ void process_loop( )
     // Compute the target position interpolated.
     g_currentTargetPos += g_ctrl.stepPos;
 
-    // Put the exact target position to the actual position in order to simulate.
     if(g_mode == SIMULATOR)
+        // Put the exact target position to the actual position in order to simulate.
         g_position.l = g_currentTargetPos;
-
-        // Compute the exact position according to 16 bit overflow from QEI module.
     else
+        // Compute the exact position according to 16 bit overflow from QEI module.
         g_position.l = g_encoderU16 + ReadQEI();
-    
+
     g_speed.l = (g_position.l - g_lastPosition) * g_ctrl.loopFrequency;
     g_accel.l = (g_speed.l - g_lastSpeed) * g_ctrl.loopFrequency;
 
@@ -447,6 +448,7 @@ void process_loop( )
     if(g_mode != CLOSE_LOOP)
         return;
 
+    // Compute the actual position error.
     double posError = g_currentTargetPos - g_position.l;
     double cmd = posError * g_kp.value;
 
