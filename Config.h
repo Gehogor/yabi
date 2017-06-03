@@ -16,7 +16,7 @@
 #include <xc.h>
 
 // FOSC
-#pragma config FPR = FRC_PLL16           // Primary Oscillator Mode (XT w/PLL 16x)
+#pragma config FPR = FRC_PLL16          // Primary Oscillator Mode (XT w/PLL 16x)
 #pragma config FOS = PRI                // Oscillator Source (Primary Oscillator)
 #pragma config FCKSMEN = CSW_FSCM_OFF   // Clock Switching and Monitor (Sw Disabled, Mon Disabled)
 

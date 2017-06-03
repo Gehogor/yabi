@@ -18,21 +18,16 @@
 // PIC management
 #include <adc10.h>
 
-// Inverter parameters -------------------------------------------------------//
-#define TYPE_CARD 0x01      // Type of brushless invertor.
-
-#define IV_ENCODER  1
-#define IV_TACHY   0
-
 // Timer parameters ----------------------------------------------------------//
-#define PR_T1   29500       // 1kHz
-#define PR_T2   2938        // 10kHz
-#define PR_T3   1474        // 20kHz
-#define PR_T4   11480       // 10Hz
+//#define PR_T1   29500       // 1kHz
+#define PR_T1       1474    // 20kHz
+#define T1_FREQ     20000   // 20kHz
+
+#define PR_T2       2938    // 10kHz
+#define PR_T3       1474    // 20kHz
+#define PR_T4       11480   // 10Hz
 
 // PWM parameters ------------------------------------------------------------//
-// PWM Period = [(PRy) + 1] x TCY x (TMRy Prescale Value)
-// PWM Frequency = 1/[PWM Period]
 #define PWM_MAX         1480
 #define HALF_PWM_MAX    PWM_MAX/2
 
@@ -61,30 +56,10 @@
 // Led managmement -----------------------------------------------------------//
 #define LED             _LATE5
 #define LED_FREQ_0HZ    0
-#define LED_FREQ_10HZ   1
-#define LED_FREQ_5HZ    2
-#define LED_FREQ_2HZ    5
-#define LED_FREQ_1HZ    10
-
-// Communication parameters --------------------------------------------------//
-#define SPI_START       0x5E
-#define SPI_TARGET      0x01
-#define SPI_MODE_READ   0x02
-#define SPI_MODE_WRITE  0x03
-#define SPI_KP_READ     0x04
-#define SPI_KP_WRITE    0x05
-#define SPI_KI_READ     0x06
-#define SPI_KI_WRITE    0x07
-#define SPI_KD_READ     0x08
-#define SPI_KD_WRITE    0x09
-
-#define SPI_UNCKNOW     0xF6
-#define SPI_NO_DATA     0xF7
-
-// Mode of state machine -----------------------------------------------------//
-#define STOP    0x00
-#define OPEN    0x01
-#define LOOP    0x02
+#define LED_FREQ_10HZ   2
+#define LED_FREQ_5HZ    4
+#define LED_FREQ_2HZ    10
+#define LED_FREQ_1HZ    20
 
 // Functions -----------------------------------------------------------------//
 void initIOs();
@@ -99,22 +74,16 @@ void initDriver(void);
 void process_LED();
 void process_current();
 void process_mode();
+unsigned char process_SPI();
 
-unsigned char process_SPI(unsigned char data);
-unsigned char process_SPI_target(unsigned char data);
+void process_loop();
+
+unsigned char process_SPI_target();
 unsigned char process_SPI_modeRead();
-unsigned char process_SPI_modeWrite(unsigned char data);
-unsigned char process_SPI_kpRead();
-unsigned char process_SPI_kpWrite(unsigned char data);
-unsigned char process_SPI_kiRead();
-unsigned char process_SPI_kiWrite(unsigned char data);
-unsigned char process_SPI_kdRead();
-unsigned char process_SPI_kdWrite(unsigned char data);
-
-void processMonitoring(long frequency);
-void processLoop(long frequency);
-
-unsigned char checkIfFunctionExist();
+unsigned char process_SPI_modeWrite();
+unsigned char process_SPI_PID_read();
+unsigned char process_SPI_PID_write();
+unsigned char process_SPI_positionWrite();
 
 // Interrupt functions -------------------------------------------------------//
 void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void);

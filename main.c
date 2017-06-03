@@ -31,72 +31,66 @@
 
 // Current project
 #include "Config.h"
-#include "EepromLib.h"
-#include "SharedVarLib.h"
-#include "SafeVariable.h"
+#include "YaXiType.h"
 
-// Axis parameters
-volatile long g_positionUnit = 0;
-volatile long g_speedUnit = 0;
+// Axis parameters -----------------------------------------------------------//
+union S32_U8 g_position;
+union S32_U8 g_speed;
+union S32_U8 g_accel;
+
+volatile long g_encoderU16 = 0;
 volatile long g_hallUnit = 0;
-volatile unsigned char g_mode;
-volatile unsigned char g_error;
 
-long g_lastPositionUnit = 0;
-long g_lastSpeedUnit = 0;
-unsigned char g_lastMode;
+union S32_U8 g_targetPos;
+union S32_U8 g_targetSpeed;
 
-// Led managmement
+unsigned char g_mode = SIMULATOR;
+
+D32 g_kp = {.value = 0.0};
+D32 g_ki = {.value = 0.0};
+D32 g_kd = {.value = 0.0};
+
+// Led managmement -----------------------------------------------------------//
 typedef struct
 {
-    unsigned int timer;
-    unsigned int frequency;
+    volatile unsigned long timer;
+    unsigned long frequency;
 } Led;
 Led g_led = {.timer = 0,.frequency = LED_FREQ_10HZ};
 
-// Current management
+// Current management --------------------------------------------------------//
 typedef struct
 {
-    unsigned char timer;
+    union U16_U8 value;
+    volatile unsigned char timer;
     unsigned char state;
     unsigned long measure;
     unsigned long average;
-    SafeData_u16 value;
 } Current;
 Current g_current = {.timer = 0,.state = 0,.measure = 0,.average = 0};
 
-// SPI management
-typedef struct
-{
-    unsigned char functionCount;
-    unsigned char index;
-    unsigned char function;
-} Com_SPI;
-Com_SPI g_spi = {.functionCount = 0,.index = 0,.function = 0};
+// SPI workflow management ---------------------------------------------------//
+Com_SPI g_spi = {.index = 0};
 
-// Loop PID managmement
-typedef struct
-{
-    unsigned int timer;
-} ControlLoop;
-ControlLoop g_cl = {.timer = 0};
+// Close loop interpolation management ---------------------------------------//
+Interpolation g_ctrl = {.timer = 0,.loopFrequency = 1000,.busFrequency = 200,.stepPos = 0};
 
-// Data management
-SafeData_s32 g_targetPos = {.reader = 0,.writer = 0};
-SafeData_s32 g_targetSpeed = {.reader = 0,.writer = 0};
-SafeData_s32 g_position = {.reader = 0,.writer = 0};
-SafeData_s32 g_speed = {.reader = 0,.writer = 0};
-SafeData_s32 g_accel = {.reader = 0,.writer = 0};
+// Internal management -------------------------------------------------------//
+long g_lastPosition = 0;
+long g_lastSpeed = 0;
+long g_currentTargetPos = 0;
+unsigned char g_lastMode = 0xFF;
 
-SafeData_s32 g_kp = {.reader = 0,.writer = 0};
-SafeData_s32 g_ki = {.reader = 0,.writer = 0};
-SafeData_s32 g_kd = {.reader = 0,.writer = 0};
-
+/**
+ * Main function, manage all initialization and continuous process.
+ * @return 0 at the end of program.
+ */
 int main( )
 {
     initIOs();
     initTimer();
     initSPI();
+    initPWM();
     initADC();
     initInterruptFromEncoderSensor();
     initInterruptFromHallSensor();
@@ -107,6 +101,11 @@ int main( )
         process_LED();
         process_current();
         process_mode();
+
+        if(process_SPI() == SPI_ERROR_DATA)
+            g_mode = DRIVER_OPEN;
+
+        process_loop();
     }
 
     CloseTimer1();
@@ -155,7 +154,7 @@ void initTimer( )
                & T1_GATE_OFF
                & T1_PS_1_1
                & T1_SYNC_EXT_OFF
-               &T1_SOURCE_INT
+               & T1_SOURCE_INT
                ,
                PR_T1);
 
@@ -166,7 +165,7 @@ void initTimer( )
                & T2_IDLE_STOP
                & T2_GATE_OFF
                & T2_PS_1_1
-               &T2_SOURCE_INT
+               & T2_SOURCE_INT
                ,
                PR_T2);
 
@@ -176,7 +175,7 @@ void initTimer( )
     OpenTimer4(T4_ON
                & T4_IDLE_STOP
                & T4_GATE_OFF
-               & T4_PS_1_256
+               & T4_PS_1_64
                & T4_SOURCE_INT
                ,
                PR_T4);
@@ -258,7 +257,8 @@ void initInterruptFromEncoderSensor( )
             & QEI_INT_CLK
             & QEI_INDEX_RESET_DISABLE
             & QEI_CLK_PRESCALE_1
-            & QEI_GATED_ACC_DISABLE & QEI_INPUTS_NOSWAP
+            & QEI_GATED_ACC_DISABLE
+            & QEI_INPUTS_NOSWAP
             & QEI_MODE_x4_MATCH
             & QEI_DIR_SEL_CNTRL
             ,
@@ -267,7 +267,6 @@ void initInterruptFromEncoderSensor( )
             & QEI_QE_OUT_ENABLE
             & MATCH_INDEX_PHASEA_HIGH
             & MATCH_INDEX_PHASEB_HIGH);
-    QEICONbits.UPDN = 1;
 }
 
 void initInterruptFromHallSensor( )
@@ -280,8 +279,14 @@ void initInterruptFromHallSensor( )
 
 void initDriver( void )
 {
+    // Select fast-decay mode, better for start, stop and positioning
+    // application.
     DRIVER_MODE = 0;
+
+    // Turn all FETs off.
     DRIVER_COAST = 0;
+
+    // Choose a default direction.
     DRIVER_DIR = 1;
 }
 
@@ -323,7 +328,7 @@ void process_current( )
 
     if(g_current.measure >= 5)
     {
-        fromU16_u16(&g_current.value,g_current.average / g_current.measure);
+        g_current.value.i = g_current.average / g_current.measure;
 
         g_current.measure = 0;
         g_current.average = 0;
@@ -336,24 +341,31 @@ void process_mode( )
     {
         switch(g_mode)
         {
-            case STOP:
-                DRIVER_COAST = 0;//Mise off du Driver
+            case SIMULATOR:
+                DRIVER_COAST = 0;// Motor driver power off.
+                SetDCOC1PWM(HALF_PWM_MAX);
+                g_led.frequency = LED_FREQ_1HZ;
+                break;
+
+            case DRIVER_OPEN:
+                DRIVER_COAST = 0;// Motor driver power off.
+                SetDCOC1PWM(HALF_PWM_MAX);
+                g_led.frequency = LED_FREQ_2HZ;
+                break;
+
+            case OPEN_LOOP:
+                DRIVER_COAST = 1;// Motor driver power on.
                 SetDCOC1PWM(HALF_PWM_MAX);
                 g_led.frequency = LED_FREQ_10HZ;
                 break;
 
-            case OPEN:
-                DRIVER_COAST = 1;//Mise on du Driver
-                g_led.frequency = LED_FREQ_2HZ;
-                break;
-
-            case LOOP:
-                DRIVER_COAST = 1;//Mise on du Driver
+            case CLOSE_LOOP:
+                DRIVER_COAST = 1;// Motor driver power on.
                 g_led.frequency = LED_FREQ_5HZ;
                 break;
 
             default:
-                DRIVER_COAST = 0;//Mise off du Driver
+                DRIVER_COAST = 0;// Motor driver power off.
                 g_led.frequency = LED_FREQ_1HZ;
                 break;
         }
@@ -361,147 +373,82 @@ void process_mode( )
     }
 }
 
-unsigned char process_SPI( unsigned char data )
+unsigned char process_SPI( )
 {
-    unsigned char result = 0;
+    if(g_spi.index != SPI_MAX_SIZE)
+        return SPI_NO_ERROR;
 
-    if(g_spi.functionCount == 0 && data == SPI_START)
+    // Reset the index of SPI buffer.
+    g_spi.index = 0;
+
+    if(g_spi.rx[0] != SPI_START)
+        return SPI_ERROR_DATA;
+
+    switch(g_spi.rx[1])
     {
-        g_spi.functionCount++;
-    }
-    else if(g_spi.functionCount == 1)
-    {
-        g_spi.function = SPI1BUF;
-        g_spi.functionCount++;
-        g_spi.index = 0;
-        result = checkIfFunctionExist();
-    }
-    else if(g_spi.functionCount == 2)
-    {
-        switch(g_spi.function)
-        {
-            case SPI_TARGET:
-                result = process_SPI_target(data);
-                break;
+        case SPI_TARGET:
+            return process_SPI_target();
+            break;
 
-            case SPI_MODE_READ:
-                result = process_SPI_modeRead();
-                break;
+        case SPI_MODE_READ:
+            return process_SPI_modeRead();
+            break;
 
-            case SPI_MODE_WRITE:
-                result = process_SPI_modeWrite(data);
-                break;
+        case SPI_MODE_WRITE:
+            return process_SPI_modeWrite();
+            break;
 
-            case SPI_KP_READ:
-                result = process_SPI_kp(data);
-                break;
+        case SPI_PID_READ:
+            return process_SPI_PID_read();
+            break;
 
-            case SPI_KP_WRITE:
-                result = process_SPI_ki(data);
-                break;
+        case SPI_PID_WRITE:
+            return process_SPI_PID_write();
+            break;
 
-            case SPI_KI_READ:
-                result = process_SPI_kd(data);
-                break;
+        case SPI_POSITION_WRITE:
+            return process_SPI_positionWrite();
+            break;
 
-            case SPI_KI_WRITE:
-                result = process_SPI_kd(data);
-                break;
-
-            case SPI_KD_READ:
-                result = process_SPI_kd(data);
-                break;
-
-            case SPI_KD_WRITE:
-                result = process_SPI_kd(data);
-                break;
-        }
-
-        g_spi.index++;
+        default:
+            g_spi.tx[0] = SPI_START;
+            g_spi.tx[1] = SPI_UNCKNOW;
+            g_spi.tx[2] = SPI_END;
+            break;
     }
 
-    return result;
+    return SPI_ERROR_DATA;
 }
 
-unsigned char process_SPI_target( unsigned char data )
+void process_loop( )
 {
-    if(g_spi.index < 4)
-    {
-        fromU8_s32(&g_targetPos,data,g_spi.index);
-        return toU8_s32(&g_position,g_spi.index);
-    }
-    else if(g_spi.index >= 4 && g_spi.index < 8)
-    {
-        fromU8_s32(&g_targetSpeed,data,g_spi.index - 4);
-        return toU8_s32(&g_speed,g_spi.index - 4);
-    }
-    else if(g_spi.index >= 8 && g_spi.index < 12)
-    {
-        return toU8_s32(&g_accel,g_spi.index - 8);
-    }
-    else if(g_spi.index >= 12 && g_spi.index < 14)
-    {
-        return toU8_u16(&g_current.value,g_spi.index - 12);
-    }
-
-    g_spi.functionCount = 0;
-    return g_error;
-}
-
-unsigned char process_SPI_modeRead( )
-{
-    if(g_spi.index == 1)
-        return g_mode;
-
-    g_spi.functionCount = 0;
-    return g_error;
-}
-
-unsigned char process_SPI_modeWrite( unsigned char data )
-{
-    g_mode = data;
-    g_spi.functionCount = 0;
-    return g_error;
-}
-
-unsigned char process_SPI_kpWrite( unsigned char data )
-{
-    if(g_spi.index < 4)
-    {
-        fromU8_s32(&g_kp,data,g_spi.index);
-        return SPI_NO_DATA;
-    }
-}
-
-unsigned char process_SPI_ki( unsigned char data )
-{
-
-}
-
-unsigned char process_SPI_kd( unsigned char data )
-{
-
-}
-
-void processMonitoring( long frequency )
-{
-    g_speedUnit = (g_positionUnit - g_lastPositionUnit) * frequency;
-
-    fromS32_s32(&g_position,g_positionUnit);
-    fromS32_s32(&g_speed,g_speedUnit);
-    fromS32_s32(&g_accel,(g_speedUnit - g_lastSpeedUnit) * frequency);
-
-    g_lastPositionUnit = g_positionUnit;
-    g_lastSpeedUnit = g_speedUnit;
-}
-
-void processLoop( long frequency )
-{
-    if(g_mode != LOOP)
+    if(g_ctrl.timer < (T1_FREQ / g_ctrl.loopFrequency))
         return;
 
-    double posError = toS32_s32(&g_targetPos) - toS32_s32(&g_position);
-    double cmd = posError * toS32_s32(&g_kp) / 65536.0;
+    g_ctrl.timer = 0;
+
+    // Compute the target position interpolated.
+    g_currentTargetPos += g_ctrl.stepPos;
+
+    // Put the exact target position to the actual position in order to simulate.
+    if(g_mode == SIMULATOR)
+        g_position.l = g_currentTargetPos;
+
+        // Compute the exact position according to 16 bit overflow from QEI module.
+    else
+        g_position.l = g_encoderU16 + ReadQEI();
+    
+    g_speed.l = (g_position.l - g_lastPosition) * g_ctrl.loopFrequency;
+    g_accel.l = (g_speed.l - g_lastSpeed) * g_ctrl.loopFrequency;
+
+    g_lastPosition = g_position.l;
+    g_lastSpeed = g_speed.l;
+
+    if(g_mode != CLOSE_LOOP)
+        return;
+
+    double posError = g_currentTargetPos - g_position.l;
+    double cmd = posError * g_kp.value;
 
     // Offset for the PWM (0 -> 1480)
     cmd += HALF_PWM_MAX;
@@ -515,24 +462,174 @@ void processLoop( long frequency )
     SetDCOC1PWM(cmd);
 }
 
-unsigned char checkIfFunctionExist( )
+unsigned char process_SPI_target( )
 {
-    switch(g_spi.function)
-    {
-        case SPI_TARGET:
-        case SPI_MODE_READ:
-        case SPI_MODE_WRITE:
-        case SPI_KP_READ:
-        case SPI_KP_WRITE:
-        case SPI_KI_READ:
-        case SPI_KI_WRITE:
-        case SPI_KD_READ:
-        case SPI_KD_WRITE:
-            return g_spi.function;
-    }
+    if(g_spi.rx[10] != SPI_END || g_spi.rx[17] != SPI_END)
+        return SPI_ERROR_DATA;
 
-    g_spi.functionCount = 0;
-    return SPI_UNCKNOW;
+    // Memorize the last target position command.
+    g_currentTargetPos = g_targetPos.l;
+
+    // Get target position from SPI.
+    g_targetPos.c[0] = g_spi.rx[2];
+    g_targetPos.c[1] = g_spi.rx[3];
+    g_targetPos.c[2] = g_spi.rx[4];
+    g_targetPos.c[3] = g_spi.rx[5];
+
+    // Get target speed from SPI.
+    g_targetSpeed.c[0] = g_spi.rx[6];
+    g_targetSpeed.c[1] = g_spi.rx[7];
+    g_targetSpeed.c[2] = g_spi.rx[8];
+    g_targetSpeed.c[3] = g_spi.rx[9];
+
+    g_spi.tx[0] = SPI_START;
+    g_spi.tx[1] = SPI_TARGET;
+
+    g_spi.tx[2] = g_position.c[0];
+    g_spi.tx[3] = g_position.c[1];
+    g_spi.tx[4] = g_position.c[2];
+    g_spi.tx[5] = g_position.c[3];
+
+    g_spi.tx[6] = g_speed.c[0];
+    g_spi.tx[7] = g_speed.c[1];
+    g_spi.tx[8] = g_speed.c[2];
+    g_spi.tx[9] = g_speed.c[3];
+
+    g_spi.tx[10] = g_accel.c[0];
+    g_spi.tx[11] = g_accel.c[1];
+    g_spi.tx[12] = g_accel.c[2];
+    g_spi.tx[13] = g_accel.c[3];
+
+    g_spi.tx[14] = g_current.value.c[0];
+    g_spi.tx[15] = g_current.value.c[1];
+
+    g_spi.tx[16] = SPI_END;
+
+    // Reset index for the new interpolation.
+    const long count = g_ctrl.loopFrequency / g_ctrl.busFrequency;
+    g_ctrl.stepPos = (g_targetPos.l - g_currentTargetPos) / count;
+
+    return SPI_NO_ERROR;
+}
+
+unsigned char process_SPI_modeRead( )
+{
+    if(g_spi.rx[2] != SPI_END || g_spi.rx[17] != SPI_END)
+        return SPI_ERROR_DATA;
+
+    // Set the current mode to SPI buffer.
+    g_spi.tx[0] = SPI_START;
+    g_spi.tx[1] = SPI_MODE_READ;
+    g_spi.tx[2] = g_mode;
+    g_spi.tx[3] = SPI_END;
+
+    return SPI_NO_ERROR;
+}
+
+unsigned char process_SPI_modeWrite( )
+{
+    if(g_spi.rx[3] != SPI_END || g_spi.rx[17] != SPI_END)
+        return SPI_ERROR_DATA;
+
+    // Get the new mode from SPI buffer.
+    g_mode = g_spi.rx[2];
+
+    g_spi.tx[0] = SPI_START;
+    g_spi.tx[1] = SPI_MODE_WRITE;
+    g_spi.tx[2] = SPI_END;
+
+    return SPI_NO_ERROR;
+}
+
+unsigned char process_SPI_PID_read( )
+{
+    if(g_spi.rx[2] != SPI_END || g_spi.rx[17] != SPI_END)
+        return SPI_ERROR_DATA;
+
+    g_kp.bus.l = g_kp.value * 65536.0;
+    g_ki.bus.l = g_ki.value * 65536.0;
+    g_kd.bus.l = g_kd.value * 65536.0;
+
+    // Set the current PID values to SPI buffer.
+    g_spi.tx[0] = SPI_START;
+    g_spi.tx[1] = SPI_PID_READ;
+
+    g_spi.tx[2] = g_kp.bus.c[0];
+    g_spi.tx[3] = g_kp.bus.c[1];
+    g_spi.tx[4] = g_kp.bus.c[2];
+    g_spi.tx[5] = g_kp.bus.c[3];
+
+    g_spi.tx[6] = g_ki.bus.c[0];
+    g_spi.tx[7] = g_ki.bus.c[1];
+    g_spi.tx[8] = g_ki.bus.c[2];
+    g_spi.tx[9] = g_ki.bus.c[3];
+
+    g_spi.tx[10] = g_kd.bus.c[0];
+    g_spi.tx[11] = g_kd.bus.c[1];
+    g_spi.tx[12] = g_kd.bus.c[2];
+    g_spi.tx[13] = g_kd.bus.c[3];
+
+    g_spi.tx[14] = SPI_END;
+
+    return SPI_NO_ERROR;
+}
+
+unsigned char process_SPI_PID_write( )
+{
+    if(g_spi.rx[14] != SPI_END || g_spi.rx[17] != SPI_END)
+        return SPI_ERROR_DATA;
+
+    // Set the buffer for response to SPI.
+    g_spi.tx[0] = SPI_START;
+    g_spi.tx[1] = SPI_PID_WRITE;
+    g_spi.tx[3] = SPI_END;
+
+    // Get new value kp of PID from SPI.
+    g_kp.bus.c[0] = g_spi.rx[2];
+    g_kp.bus.c[1] = g_spi.rx[3];
+    g_kp.bus.c[2] = g_spi.rx[4];
+    g_kp.bus.c[3] = g_spi.rx[5];
+
+    // Get new value ki of PID from SPI.
+    g_ki.bus.c[0] = g_spi.rx[6];
+    g_ki.bus.c[1] = g_spi.rx[7];
+    g_ki.bus.c[2] = g_spi.rx[8];
+    g_ki.bus.c[3] = g_spi.rx[9];
+
+    // Get new value kd of PID from SPI.
+    g_kd.bus.c[0] = g_spi.rx[10];
+    g_kd.bus.c[1] = g_spi.rx[11];
+    g_kd.bus.c[2] = g_spi.rx[12];
+    g_kd.bus.c[3] = g_spi.rx[13];
+
+    // Set the kp, ki and kd values.
+    g_kp.value = g_kp.bus.l / 65536.0;
+    g_ki.value = g_ki.bus.l / 65536.0;
+    g_kd.value = g_kd.bus.l / 65536.0;
+
+    return SPI_NO_ERROR;
+}
+
+unsigned char process_SPI_positionWrite( )
+{
+    if(g_spi.rx[6] != SPI_END || g_spi.rx[17] != SPI_END)
+        return SPI_ERROR_DATA;
+
+    // Set the buffer for response to SPI.
+    g_spi.tx[0] = SPI_START;
+    g_spi.tx[1] = SPI_POSITION_WRITE;
+    g_spi.tx[3] = SPI_END;
+
+    // Get new value kp of PID from SPI.
+    g_position.c[0] = g_spi.rx[2];
+    g_position.c[1] = g_spi.rx[3];
+    g_position.c[2] = g_spi.rx[4];
+    g_position.c[3] = g_spi.rx[5];
+
+    g_encoderU16 = g_position.l & 0xFFFF0000;
+    WriteQEI(g_position.l);
+
+    return SPI_NO_ERROR;
 }
 
 /**
@@ -542,84 +639,7 @@ void __attribute__( (interrupt,no_auto_psv) ) _T1Interrupt( void )
 {
     WriteTimer1(0);
     _T1IF = 0;
-
-    processMonitoring(1000);
-    processLoop(1000);
-
-    /*if(g_timerSpeed >= g_timePrecision)
-    {
-        g_timerSpeed = 0;
-        if(g_interface_mesure_vitesse_SPI == IV_ENCODER)
-        {
-            //recup position
-            s32MotorPosition.s32_data_APP = (((signed long)g_encoderUnit) << 15)+((signed long)ReadQEI());
-            WriteSharedVarS32_APP(&s32MotorPosition);
-            //Sauvegarde de la valeur ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â  soustraire pour la prochain calcul
-            g_motor_pos_mem = s32MotorPosition.s32_data_APP;
-
-            //Determine le nombre de pas depuis la derniere acquisition
-            g_motor_vitesse = s32MotorPosition.s32_data_APP - g_motor_pos_mem;
-            g_motor_vitesse *= 1000;// ms -> s
-            g_motor_vitesse /= g_timePrecision;// pulse/s
-
-            //Copie la vitesse calculer dans la variable partagÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½e
-            s32MesuredSpeed.s32_data_APP = g_motor_vitesse;
-            WriteSharedVarS32_APP(&s32MesuredSpeed);
-        }
-        else
-        {
-            g_motor_vitesse = g_hallUnit;
-            g_hallUnit = 0;// Reset the counter
-            g_motor_vitesse *= 1000;// ms -> s
-            g_motor_vitesse /= g_timePrecision;// pulse/s
-
-            if(DRIVER_DIRO == 1)
-                g_motor_vitesse *= -1;
-
-            //RPS    driver = 24 pulses / tr
-            //            g_motor_vitesse /= 24;
-            s32MesuredSpeed.s32_data_APP = g_motor_vitesse;
-            WriteSharedVarS32_APP(&s32MesuredSpeed);
-        }
-
-        ReadSharedVarS32_APP(&s32SetpointSpeed);
-        g_dutycycle = s32SetpointSpeed.s32_data_APP;
-
-        if(g_flag_asser == LOOP)
-        {
-            // Erreur Proportionnelle
-            g_Erreur_P = s32SetpointSpeed.s32_data_APP - g_motor_vitesse;
-            s32MesuredAcceleration.s32_data_APP = g_Erreur_P;
-            WriteSharedVarS32_APP(&s32MesuredAcceleration);
-            // Cumul IntÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½grale
-            g_Erreur_I += g_Erreur_P;
-
-            // Calcul Asservissement Kp
-            ReadSharedVarU16_APP(&u16KpNum);
-            ReadSharedVarU16_APP(&u16KpDenum);
-            g_dutycycle += g_Erreur_P;
-            g_dutycycle *= (signed long)u16KpNum.u16_data_APP;
-            g_dutycycle /= (signed long)u16KpDenum.u16_data_APP;
-
-            // Calcul Asservissement Ki
-            ReadSharedVarU16_APP(&u16KiNum);
-            ReadSharedVarU16_APP(&u16KiDenum);
-            g_dutycycle += g_Erreur_I;
-            g_dutycycle *= (signed long)u16KiNum.u16_data_APP;
-            g_dutycycle /= (signed long)u16KiDenum.u16_data_APP;
-        }
-
-        // Remise ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ l'ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½chelle en fonction de
-        // la vitesse maximale, PWM : Max 1480 -> +/- 740.
-        g_dutycycle *= (PWM_VAL_MAX / 2);
-        ReadSharedVarS32_APP(&s32ConfMaxSpeed);
-        g_dutycycle /= s32ConfMaxSpeed.s32_data_APP;
-
-        // Offset for the PWM (0 -> 1480)
-        g_dutycycle += PWM_VAL_MAX / 2;
-
-        SetDCOC1PWM((unsigned int)(g_dutycycle));
-    }*/
+    g_ctrl.timer++;
 }
 
 /**
@@ -647,7 +667,6 @@ void __attribute__( (interrupt,no_auto_psv) ) _T4Interrupt( void )
  */
 void __attribute__( (interrupt,no_auto_psv) ) _SPI1Interrupt( void )
 {
-    unsigned char result = 0;
     _SPI1IF = 0;
 
     // Error, overflow.
@@ -655,18 +674,23 @@ void __attribute__( (interrupt,no_auto_psv) ) _SPI1Interrupt( void )
     {
         // clear overflow.
         SPI1STATbits.SPIROV = 0;
-        g_spi.functionCount = 0;
+        g_spi.index = 0;
     }
     else if(!SPI1STATbits.SPIRBF)
     {
         // SPI error.
-        g_spi.functionCount = 0;
+        g_spi.index = 0;
     }
     else
     {
-        result = process_SPI(SPI1BUF);
-        while(SPI1STATbits.SPITBF);
-        SPI1BUF = result;
+        if(g_spi.index < SPI_MAX_SIZE)
+        {
+            g_spi.rx[g_spi.index] = SPI1BUF;
+            while(SPI1STATbits.SPITBF);
+            SPI1BUF = g_spi.tx[g_spi.index];
+
+            g_spi.index++;
+        }
     }
 }
 
@@ -678,11 +702,11 @@ void __attribute__( (interrupt,no_auto_psv) ) _QEIInterrupt( void )
     // Clear QEI interrupt flag.
     _QEIIF = 0;
 
-    // Counter unit from coder pulse.
+    // Check if there is an 16 bits overflow.
     if(QEICONbits.UPDN)
-        g_positionUnit++;
+        g_encoderU16 += 0x7FFF;
     else
-        g_positionUnit--;
+        g_encoderU16 -= 0x7FFF;
 }
 
 /**
