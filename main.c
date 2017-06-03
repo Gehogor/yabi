@@ -34,44 +34,38 @@
 #include "YaXiType.h"
 
 // Axis parameters -----------------------------------------------------------//
-SafeData_S32 g_position = {.value = 0};
-SafeData_S32 g_speed = {.value = 0};
-SafeData_S32 g_accel = {.value = 0};
+union S32_U8 g_position;
+union S32_U8 g_speed;
+union S32_U8 g_accel;
 
 volatile long g_encoderU16 = 0;
 volatile long g_hallUnit = 0;
 
-SafeData_S32 g_targetPos = {.value = 0};
-SafeData_S32 g_targetSpeed = {.value = 0};
+union S32_U8 g_targetPos;
+union S32_U8 g_targetSpeed;
 
-SafeData_U8 g_mode = {.bus = DRIVER_OPEN,.value = DRIVER_OPEN};
-volatile unsigned char g_error = 0;
+unsigned char g_mode = SIMULATOR;
 
-SafeData_D32 g_kp = {.value = 0.0};
-SafeData_D32 g_ki = {.value = 0.0};
-SafeData_D32 g_kd = {.value = 0.0};
-
-long g_lastPositionUnit = 0;
-long g_lastSpeedUnit = 0;
-unsigned char g_lastMode = 0xFF;
+D32 g_kp = {.value = 0.0};
+D32 g_ki = {.value = 0.0};
+D32 g_kd = {.value = 0.0};
 
 // Led managmement -----------------------------------------------------------//
 typedef struct
 {
-    unsigned int timer;
-    unsigned int frequency;
+    volatile unsigned long timer;
+    unsigned long frequency;
 } Led;
 Led g_led = {.timer = 0,.frequency = LED_FREQ_10HZ};
 
 // Current management --------------------------------------------------------//
 typedef struct
 {
-    union U16_U8 bus;
-    unsigned char timer;
+    union U16_U8 value;
+    volatile unsigned char timer;
     unsigned char state;
     unsigned long measure;
     unsigned long average;
-    volatile unsigned int value;
 } Current;
 Current g_current = {.timer = 0,.state = 0,.measure = 0,.average = 0};
 
@@ -79,7 +73,13 @@ Current g_current = {.timer = 0,.state = 0,.measure = 0,.average = 0};
 Com_SPI g_spi = {.index = 0};
 
 // Close loop interpolation management ---------------------------------------//
-Interpolation g_cl = {.timer = 0,.frequency = 1000,.index = 0};
+Interpolation g_ctrl = {.timer = 0,.loopFrequency = 1000,.busFrequency = 200,.stepPos = 0};
+
+// Internal management -------------------------------------------------------//
+long g_lastPosition = 0;
+long g_lastSpeed = 0;
+long g_currentTargetPos = 0;
+unsigned char g_lastMode = 0xFF;
 
 /**
  * Main function, manage all initialization and continuous process.
@@ -103,7 +103,7 @@ int main( )
         process_mode();
 
         if(process_SPI() == SPI_ERROR_DATA)
-            g_mode.value = DRIVER_OPEN;
+            g_mode = DRIVER_OPEN;
 
         process_loop();
     }
@@ -328,7 +328,7 @@ void process_current( )
 
     if(g_current.measure >= 5)
     {
-        g_current.value = g_current.average / g_current.measure;
+        g_current.value.i = g_current.average / g_current.measure;
 
         g_current.measure = 0;
         g_current.average = 0;
@@ -337,10 +337,16 @@ void process_current( )
 
 void process_mode( )
 {
-    if(g_mode.value != g_lastMode)
+    if(g_mode != g_lastMode)
     {
-        switch(g_mode.value)
+        switch(g_mode)
         {
+            case SIMULATOR:
+                DRIVER_COAST = 0;// Motor driver power off.
+                SetDCOC1PWM(HALF_PWM_MAX);
+                g_led.frequency = LED_FREQ_1HZ;
+                break;
+
             case DRIVER_OPEN:
                 DRIVER_COAST = 0;// Motor driver power off.
                 SetDCOC1PWM(HALF_PWM_MAX);
@@ -363,14 +369,17 @@ void process_mode( )
                 g_led.frequency = LED_FREQ_1HZ;
                 break;
         }
-        g_lastMode = g_mode.value;
+        g_lastMode = g_mode;
     }
 }
 
 unsigned char process_SPI( )
 {
     if(g_spi.index != SPI_MAX_SIZE)
-        return SPI_ERROR_DATA;
+        return SPI_NO_ERROR;
+
+    // Reset the index of SPI buffer.
+    g_spi.index = 0;
 
     if(g_spi.rx[0] != SPI_START)
         return SPI_ERROR_DATA;
@@ -413,24 +422,32 @@ unsigned char process_SPI( )
 
 void process_loop( )
 {
-    if(g_cl.timer < 20000/g_cl.frequency)
+    if(g_ctrl.timer < (T1_FREQ / g_ctrl.loopFrequency))
         return;
 
-    g_cl.timer = 0;
+    g_ctrl.timer = 0;
 
-    // Compute the exact position according to 16 bit overflow from QEI module.
-    g_position.value = g_encoderU16 + ReadQEI();
+    // Compute the target position interpolated.
+    g_currentTargetPos += g_ctrl.stepPos;
 
-    g_speed.value = (g_position.value - g_lastPositionUnit) * g_cl.frequency;
-    g_accel.value = (g_speed.value - g_lastSpeedUnit) * g_cl.frequency;
+    // Put the exact target position to the actual position in order to simulate.
+    if(g_mode == SIMULATOR)
+        g_position.l = g_currentTargetPos;
 
-    g_lastPositionUnit = g_position.value;
-    g_lastSpeedUnit = g_speed.value;
+        // Compute the exact position according to 16 bit overflow from QEI module.
+    else
+        g_position.l = g_encoderU16 + ReadQEI();
+    
+    g_speed.l = (g_position.l - g_lastPosition) * g_ctrl.loopFrequency;
+    g_accel.l = (g_speed.l - g_lastSpeed) * g_ctrl.loopFrequency;
 
-    if(g_mode.value != CLOSE_LOOP)
+    g_lastPosition = g_position.l;
+    g_lastSpeed = g_speed.l;
+
+    if(g_mode != CLOSE_LOOP)
         return;
 
-    double posError = g_targetPos.value - g_position.value;
+    double posError = g_currentTargetPos - g_position.l;
     double cmd = posError * g_kp.value;
 
     // Offset for the PWM (0 -> 1480)
@@ -447,62 +464,63 @@ void process_loop( )
 
 unsigned char process_SPI_target( )
 {
-    if(g_spi.rx[10] != SPI_END)
+    if(g_spi.rx[10] != SPI_END || g_spi.rx[17] != SPI_END)
         return SPI_ERROR_DATA;
 
+    // Memorize the last target position command.
+    g_currentTargetPos = g_targetPos.l;
+
     // Get target position from SPI.
-    g_targetPos.bus.c[0] = g_spi.rx[2];
-    g_targetPos.bus.c[1] = g_spi.rx[3];
-    g_targetPos.bus.c[2] = g_spi.rx[4];
-    g_targetPos.bus.c[3] = g_spi.rx[5];
+    g_targetPos.c[0] = g_spi.rx[2];
+    g_targetPos.c[1] = g_spi.rx[3];
+    g_targetPos.c[2] = g_spi.rx[4];
+    g_targetPos.c[3] = g_spi.rx[5];
 
     // Get target speed from SPI.
-    g_targetSpeed.bus.c[0] = g_spi.rx[6];
-    g_targetSpeed.bus.c[1] = g_spi.rx[7];
-    g_targetSpeed.bus.c[2] = g_spi.rx[8];
-    g_targetSpeed.bus.c[3] = g_spi.rx[9];
-
-    // Set current position, speed, acceleration and current to SPI buffer.
-    g_position.bus.l = g_position.value;
-    g_speed.bus.l = g_speed.value;
-    g_accel.bus.l = g_accel.value;
-    g_current.bus.i = g_current.value;
+    g_targetSpeed.c[0] = g_spi.rx[6];
+    g_targetSpeed.c[1] = g_spi.rx[7];
+    g_targetSpeed.c[2] = g_spi.rx[8];
+    g_targetSpeed.c[3] = g_spi.rx[9];
 
     g_spi.tx[0] = SPI_START;
     g_spi.tx[1] = SPI_TARGET;
 
-    g_spi.tx[2] = g_position.bus.c[0];
-    g_spi.tx[3] = g_position.bus.c[1];
-    g_spi.tx[4] = g_position.bus.c[2];
-    g_spi.tx[5] = g_position.bus.c[3];
+    g_spi.tx[2] = g_position.c[0];
+    g_spi.tx[3] = g_position.c[1];
+    g_spi.tx[4] = g_position.c[2];
+    g_spi.tx[5] = g_position.c[3];
 
-    g_spi.tx[6] = g_speed.bus.c[0];
-    g_spi.tx[7] = g_speed.bus.c[1];
-    g_spi.tx[8] = g_speed.bus.c[2];
-    g_spi.tx[9] = g_speed.bus.c[3];
+    g_spi.tx[6] = g_speed.c[0];
+    g_spi.tx[7] = g_speed.c[1];
+    g_spi.tx[8] = g_speed.c[2];
+    g_spi.tx[9] = g_speed.c[3];
 
-    g_spi.tx[10] = g_accel.bus.c[0];
-    g_spi.tx[11] = g_accel.bus.c[1];
-    g_spi.tx[12] = g_accel.bus.c[2];
-    g_spi.tx[13] = g_accel.bus.c[3];
+    g_spi.tx[10] = g_accel.c[0];
+    g_spi.tx[11] = g_accel.c[1];
+    g_spi.tx[12] = g_accel.c[2];
+    g_spi.tx[13] = g_accel.c[3];
 
-    g_spi.tx[14] = g_current.bus.c[0];
-    g_spi.tx[15] = g_current.bus.c[1];
+    g_spi.tx[14] = g_current.value.c[0];
+    g_spi.tx[15] = g_current.value.c[1];
 
     g_spi.tx[16] = SPI_END;
+
+    // Reset index for the new interpolation.
+    const long count = g_ctrl.loopFrequency / g_ctrl.busFrequency;
+    g_ctrl.stepPos = (g_targetPos.l - g_currentTargetPos) / count;
 
     return SPI_NO_ERROR;
 }
 
 unsigned char process_SPI_modeRead( )
 {
-    if(g_spi.rx[2] != SPI_END)
+    if(g_spi.rx[2] != SPI_END || g_spi.rx[17] != SPI_END)
         return SPI_ERROR_DATA;
 
     // Set the current mode to SPI buffer.
     g_spi.tx[0] = SPI_START;
     g_spi.tx[1] = SPI_MODE_READ;
-    g_spi.tx[2] = g_mode.value;
+    g_spi.tx[2] = g_mode;
     g_spi.tx[3] = SPI_END;
 
     return SPI_NO_ERROR;
@@ -510,11 +528,11 @@ unsigned char process_SPI_modeRead( )
 
 unsigned char process_SPI_modeWrite( )
 {
-    if(g_spi.rx[3] != SPI_END)
+    if(g_spi.rx[3] != SPI_END || g_spi.rx[17] != SPI_END)
         return SPI_ERROR_DATA;
 
     // Get the new mode from SPI buffer.
-    g_mode.value = g_spi.rx[2];
+    g_mode = g_spi.rx[2];
 
     g_spi.tx[0] = SPI_START;
     g_spi.tx[1] = SPI_MODE_WRITE;
@@ -525,7 +543,7 @@ unsigned char process_SPI_modeWrite( )
 
 unsigned char process_SPI_PID_read( )
 {
-    if(g_spi.rx[2] != SPI_END)
+    if(g_spi.rx[2] != SPI_END || g_spi.rx[17] != SPI_END)
         return SPI_ERROR_DATA;
 
     g_kp.bus.l = g_kp.value * 65536.0;
@@ -558,7 +576,7 @@ unsigned char process_SPI_PID_read( )
 
 unsigned char process_SPI_PID_write( )
 {
-    if(g_spi.rx[14] != SPI_END)
+    if(g_spi.rx[14] != SPI_END || g_spi.rx[17] != SPI_END)
         return SPI_ERROR_DATA;
 
     // Set the buffer for response to SPI.
@@ -594,7 +612,7 @@ unsigned char process_SPI_PID_write( )
 
 unsigned char process_SPI_positionWrite( )
 {
-    if(g_spi.rx[6] != SPI_END)
+    if(g_spi.rx[6] != SPI_END || g_spi.rx[17] != SPI_END)
         return SPI_ERROR_DATA;
 
     // Set the buffer for response to SPI.
@@ -603,13 +621,13 @@ unsigned char process_SPI_positionWrite( )
     g_spi.tx[3] = SPI_END;
 
     // Get new value kp of PID from SPI.
-    g_position.bus.c[0] = g_spi.rx[2];
-    g_position.bus.c[1] = g_spi.rx[3];
-    g_position.bus.c[2] = g_spi.rx[4];
-    g_position.bus.c[3] = g_spi.rx[5];
+    g_position.c[0] = g_spi.rx[2];
+    g_position.c[1] = g_spi.rx[3];
+    g_position.c[2] = g_spi.rx[4];
+    g_position.c[3] = g_spi.rx[5];
 
-    g_encoderU16 = g_position.bus.l & 0xFFFF0000;
-    WriteQEI(g_position.bus.l);
+    g_encoderU16 = g_position.l & 0xFFFF0000;
+    WriteQEI(g_position.l);
 
     return SPI_NO_ERROR;
 }
@@ -621,7 +639,7 @@ void __attribute__( (interrupt,no_auto_psv) ) _T1Interrupt( void )
 {
     WriteTimer1(0);
     _T1IF = 0;
-    g_cl.timer++;
+    g_ctrl.timer++;
 }
 
 /**

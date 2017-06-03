@@ -34,12 +34,13 @@
 #define SPI_NO_ERROR        0x01
 #define SPI_UNCKNOW         0xF6
 #define SPI_ERROR_DATA      0xF7
-#define SPI_MAX_SIZE        17
+#define SPI_MAX_SIZE        18
 
 // Mode of state machine -----------------------------------------------------//
-#define DRIVER_OPEN 0x00
-#define OPEN_LOOP   0x01
-#define CLOSE_LOOP  0x02
+#define SIMULATOR   0x00
+#define DRIVER_OPEN 0x01
+#define OPEN_LOOP   0x02
+#define CLOSE_LOOP  0x03
 
 /* Data management -----------------------------------------------------------*/
 union S32_U8 {
@@ -54,18 +55,8 @@ union U16_U8 {
 
 typedef struct {
     union S32_U8 bus;
-    long value;
-} SafeData_S32;
-
-typedef struct {
-    union S32_U8 bus;
     double value;
-} SafeData_D32;
-
-typedef struct {
-    unsigned char bus;
-    unsigned char value;
-} SafeData_U8;
+} D32;
 
 /* SPI management ------------------------------------------------------------*/
 typedef struct {
@@ -76,9 +67,10 @@ typedef struct {
 
 /* Position interpolation ----------------------------------------------------*/
 typedef struct {
-    unsigned int timer;
-    long frequency;
-    unsigned int index;
+    volatile unsigned long timer;
+    long loopFrequency;
+    long busFrequency;
+    long stepPos;
 } Interpolation;
 
 #endif	/* _YAXITYPE_H_ */
