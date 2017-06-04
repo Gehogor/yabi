@@ -613,7 +613,7 @@ unsigned char process_SPI_PID_write( )
     // Set the buffer for response to SPI.
     g_spi.tx[0] = SPI_START;
     g_spi.tx[1] = SPI_PID_WRITE;
-    g_spi.tx[3] = SPI_END;
+    g_spi.tx[2] = SPI_END;
 
     // Get new value kp of PID from SPI.
     g_kp.bus.c[0] = g_spi.rx[2];
@@ -649,7 +649,7 @@ unsigned char process_SPI_positionWrite( )
     // Set the buffer for response to SPI.
     g_spi.tx[0] = SPI_START;
     g_spi.tx[1] = SPI_POSITION_WRITE;
-    g_spi.tx[3] = SPI_END;
+    g_spi.tx[2] = SPI_END;
 
     // Get new value kp of PID from SPI.
     g_position.c[0] = g_spi.rx[2];
