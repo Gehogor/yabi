@@ -90,6 +90,7 @@ Watchdog g_wd = {.timer = 0,.frequency.i = 100};
 long g_lastPosition = 0;
 long g_lastSpeed = 0;
 long g_currentTargetPos = 0;
+double g_errorSum = 0.0;
 unsigned char g_lastMode = 0xFF;
 
 /**
@@ -479,7 +480,9 @@ void process_loop( )
 
     // Compute the actual position error.
     double posError = g_currentTargetPos - g_position.l;
-    double cmd = posError * g_kp.value;
+    g_errorSum += posError;
+
+    double cmd = posError * g_kp.value + g_errorSum * g_ki.value;
 
     // Offset for the PWM (0 -> 1480)
     cmd += HALF_PWM_MAX;
@@ -634,9 +637,9 @@ unsigned char process_SPI_PID_write( )
     g_kd.bus.c[3] = g_spi.rx[13];
 
     // Set the kp, ki and kd values.
-    g_kp.value = g_kp.bus.l / 65536.0;
-    g_ki.value = g_ki.bus.l / 65536.0;
-    g_kd.value = g_kd.bus.l / 65536.0;
+    g_kp.value = (double)g_kp.bus.l / 65536.0;
+    g_ki.value = (double)g_ki.bus.l / 65536.0;
+    g_kd.value = (double)g_kd.bus.l / 65536.0;
 
     return SPI_NO_ERROR;
 }
