@@ -88,7 +88,6 @@ unsigned char process_SPI_positionWrite();
 // Interrupt functions -------------------------------------------------------//
 void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void);
 void __attribute__((interrupt, no_auto_psv)) _T2Interrupt(void);
-void __attribute__((interrupt, no_auto_psv)) _T4Interrupt(void);
 void __attribute__((interrupt, no_auto_psv)) _SPI1Interrupt(void);
 void __attribute__((interrupt, no_auto_psv)) _QEIInterrupt(void);
 void __attribute__((interrupt, no_auto_psv)) _INT2Interrupt(void);

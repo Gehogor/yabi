@@ -168,17 +168,6 @@ void initTimer( )
                & T2_SOURCE_INT
                ,
                PR_T2);
-
-    // Timer4 configuration (10hz).
-    ConfigIntTimer4(T4_INT_PRIOR_1 & T4_INT_ON);
-    WriteTimer4(0);
-    OpenTimer4(T4_ON
-               & T4_IDLE_STOP
-               & T4_GATE_OFF
-               & T4_PS_1_64
-               & T4_SOURCE_INT
-               ,
-               PR_T4);
 }
 
 void initSPI( )
@@ -292,11 +281,11 @@ void initDriver( void )
 
 void process_LED( )
 {
-    if(g_led.timer >= g_led.frequency)
-    {
-        g_led.timer = 0;
-        LED = ~LED;
-    }
+    if(g_led.timer < (T1_FREQ / g_led.frequency))
+        return;
+
+    g_led.timer = 0;
+    LED = ~LED;
 }
 
 void process_current( )
@@ -642,6 +631,7 @@ void __attribute__( (interrupt,no_auto_psv) ) _T1Interrupt( void )
     WriteTimer1(0);
     _T1IF = 0;
     g_ctrl.timer++;
+    g_led.timer++;
 }
 
 /**
@@ -652,16 +642,6 @@ void __attribute__( (interrupt,no_auto_psv) ) _T2Interrupt( void )
     WriteTimer2(0);
     _T2IF = 0;
     g_current.timer++;
-}
-
-/**
- * Timer 4 interrupt service routine.
- */
-void __attribute__( (interrupt,no_auto_psv) ) _T4Interrupt( void )
-{
-    WriteTimer4(0);
-    _T4IF = 0;
-    g_led.timer++;
 }
 
 /**
