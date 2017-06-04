@@ -22,8 +22,11 @@
 //#define PR_T1   29500       // 1kHz
 #define PR_T1       1474    // 20kHz
 #define T1_FREQ     20000   // 20kHz
+#define PR_T1       1474    // 20kHz
 
+#define T2_FREQ     10000   // 10kHz
 #define PR_T2       2938    // 10kHz
+
 #define PR_T3       1474    // 20kHz
 #define PR_T4       11480   // 10Hz
 

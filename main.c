@@ -67,7 +67,10 @@ typedef struct
     unsigned long measure;
     unsigned long average;
 } Current;
-Current g_current = {.timer = 0,.state = 0,.measure = 0,.average = 0};
+Current g_current = {
+    .value.i = 0,.frequency.i = 500,.count = 5,
+    .timer = 0,.state = 0,.measure = 0,.average = 0
+};
 
 // SPI workflow management ---------------------------------------------------//
 Com_SPI g_spi = {.index = 0};
@@ -290,7 +293,7 @@ void process_LED( )
 
 void process_current( )
 {
-    if(g_current.state == 0 && g_current.timer >= 20)
+    if(g_current.state == 0 && g_current.timer >= (T2_FREQ / g_current.frequency.i))
     {
         // Select the requested channel.
         SetChanADC10(ADC_CSOUT);
@@ -315,7 +318,7 @@ void process_current( )
         g_current.state = 0;
     }
 
-    if(g_current.measure >= 5)
+    if(g_current.measure >= g_current.count)
     {
         g_current.value.i = g_current.average / g_current.measure;
 
