@@ -34,21 +34,21 @@
 #include "YaXiType.h"
 
 // Axis parameters -----------------------------------------------------------//
-union S32_U8 g_position;
-union S32_U8 g_speed;
-union S32_U8 g_accel;
+union S32_U8 g_position = {.l = 0};
+union S32_U8 g_speed = {.l = 0};
+union S32_U8 g_accel = {.l = 0};
 
 volatile long g_encoderU16 = 0;
 volatile long g_hallUnit = 0;
 
-union S32_U8 g_targetPos;
-union S32_U8 g_targetSpeed;
+union S32_U8 g_targetPos = {.l = 0};
+union S32_U8 g_targetSpeed = {.l = 0};
 
 unsigned char g_mode = SIMULATOR;
 
-D32 g_kp = {.value = 0.0};
-D32 g_ki = {.value = 0.0};
-D32 g_kd = {.value = 0.0};
+D32 g_kp = {.value = 0.0,.bus.l = 0};
+D32 g_ki = {.value = 0.0,.bus.l = 0};
+D32 g_kd = {.value = 0.0,.bus.l = 0};
 
 // Led managmement -----------------------------------------------------------//
 typedef struct
@@ -56,13 +56,16 @@ typedef struct
     volatile unsigned long timer;
     unsigned long frequency;
 } Led;
-Led g_led = {.timer = 0,.frequency = LED_FREQ_10HZ};
+Led g_led = {.timer = 0,.frequency = 10};
 
 // Current management --------------------------------------------------------//
 typedef struct
 {
     union U16_U8 value;
-    volatile unsigned char timer;
+    union U16_U8 frequency;
+    unsigned char count;
+
+    volatile unsigned long timer;
     unsigned char state;
     unsigned long measure;
     unsigned long average;
@@ -336,29 +339,29 @@ void process_mode( )
             case SIMULATOR:
                 DRIVER_COAST = 0;// Motor driver power off.
                 SetDCOC1PWM(HALF_PWM_MAX);
-                g_led.frequency = LED_FREQ_1HZ;
+                g_led.frequency = 1;
                 break;
 
             case DRIVER_OPEN:
                 DRIVER_COAST = 0;// Motor driver power off.
                 SetDCOC1PWM(HALF_PWM_MAX);
-                g_led.frequency = LED_FREQ_2HZ;
+                g_led.frequency = 2;
                 break;
 
             case OPEN_LOOP:
                 DRIVER_COAST = 1;// Motor driver power on.
                 SetDCOC1PWM(HALF_PWM_MAX);
-                g_led.frequency = LED_FREQ_10HZ;
+                g_led.frequency = 5;
                 break;
 
             case CLOSE_LOOP:
                 DRIVER_COAST = 1;// Motor driver power on.
-                g_led.frequency = LED_FREQ_5HZ;
+                g_led.frequency = 10;
                 break;
 
             default:
                 DRIVER_COAST = 0;// Motor driver power off.
-                g_led.frequency = LED_FREQ_1HZ;
+                g_led.frequency = 15;
                 break;
         }
         g_lastMode = g_mode;
@@ -627,7 +630,7 @@ unsigned char process_SPI_positionWrite( )
 }
 
 /**
- * Timer 1 interrupt service routine.
+ * Timer 1 interrupt service routine (20khz).
  */
 void __attribute__( (interrupt,no_auto_psv) ) _T1Interrupt( void )
 {
@@ -638,7 +641,7 @@ void __attribute__( (interrupt,no_auto_psv) ) _T1Interrupt( void )
 }
 
 /**
- * Timer 2 interrupt service routine.
+ * Timer 2 interrupt service routine (10kHz).
  */
 void __attribute__( (interrupt,no_auto_psv) ) _T2Interrupt( void )
 {

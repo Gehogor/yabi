@@ -19,8 +19,6 @@
 #include <adc10.h>
 
 // Timer parameters ----------------------------------------------------------//
-//#define PR_T1   29500       // 1kHz
-#define PR_T1       1474    // 20kHz
 #define T1_FREQ     20000   // 20kHz
 #define PR_T1       1474    // 20kHz
 
@@ -28,7 +26,6 @@
 #define PR_T2       2938    // 10kHz
 
 #define PR_T3       1474    // 20kHz
-#define PR_T4       11480   // 10Hz
 
 // PWM parameters ------------------------------------------------------------//
 #define PWM_MAX         1480
@@ -58,11 +55,6 @@
 
 // Led managmement -----------------------------------------------------------//
 #define LED             _LATE5
-#define LED_FREQ_0HZ    0
-#define LED_FREQ_10HZ   2
-#define LED_FREQ_5HZ    4
-#define LED_FREQ_2HZ    10
-#define LED_FREQ_1HZ    20
 
 // Functions -----------------------------------------------------------------//
 void initIOs();
