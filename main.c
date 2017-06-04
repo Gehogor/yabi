@@ -54,9 +54,11 @@ D32 g_kd = {.value = 0.0,.bus.l = 0};
 typedef struct
 {
     volatile unsigned long timer;
-    unsigned long frequency;
+    unsigned long frequency_A;
+    unsigned long frequency_B;
+    unsigned char mode;
 } Led;
-Led g_led = {.timer = 0,.frequency = 10};
+Led g_led = {.timer = 0,.frequency_A = 10,.frequency_B = 10,.mode = 0};
 
 // Current management --------------------------------------------------------//
 typedef struct
@@ -287,11 +289,25 @@ void initDriver( void )
 
 void process_LED( )
 {
-    if(g_led.timer < (T1_FREQ / g_led.frequency))
-        return;
-
-    g_led.timer = 0;
-    LED = ~LED;
+    if(g_led.timer >= (T1_FREQ / g_led.frequency_A)
+            && g_led.mode < 3)
+    {
+        g_led.mode++;
+        g_led.timer = 0;
+        LED = ~LED;
+    }
+    else if(g_led.timer >= (T1_FREQ / g_led.frequency_B)
+            && g_led.mode >= 3
+            && g_led.mode < 6)
+    {
+        g_led.mode++;
+        g_led.timer = 0;
+        LED = ~LED;
+    }
+    else if(g_led.mode >= 6)
+    {
+        g_led.mode = 0;
+    }
 }
 
 void process_current( )
@@ -339,29 +355,34 @@ void process_mode( )
             case SIMULATOR:
                 DRIVER_COAST = 0;// Motor driver power off.
                 SetDCOC1PWM(HALF_PWM_MAX);
-                g_led.frequency = 1;
+                g_led.frequency_A = 1;
+                g_led.frequency_B = 1;
                 break;
 
             case DRIVER_OPEN:
                 DRIVER_COAST = 0;// Motor driver power off.
                 SetDCOC1PWM(HALF_PWM_MAX);
-                g_led.frequency = 2;
+                g_led.frequency_A = 2;
+                g_led.frequency_B = 2;
                 break;
 
             case OPEN_LOOP:
                 DRIVER_COAST = 1;// Motor driver power on.
                 SetDCOC1PWM(HALF_PWM_MAX);
-                g_led.frequency = 5;
+                g_led.frequency_A = 5;
+                g_led.frequency_B = 5;
                 break;
 
             case CLOSE_LOOP:
                 DRIVER_COAST = 1;// Motor driver power on.
-                g_led.frequency = 10;
+                g_led.frequency_A = 10;
+                g_led.frequency_B = 10;
                 break;
 
             default:
                 DRIVER_COAST = 0;// Motor driver power off.
-                g_led.frequency = 15;
+                g_led.frequency_A = 15;
+                g_led.frequency_B = 5;
                 break;
         }
         g_lastMode = g_mode;
