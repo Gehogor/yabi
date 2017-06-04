@@ -83,6 +83,9 @@ Com_SPI g_spi = {.index = 0};
 // Close loop interpolation management ---------------------------------------//
 Interpolation g_ctrl = {.timer = 0,.loopFrequency = 1000,.busFrequency = 200,.stepPos = 0};
 
+// Watchdog managmement ------------------------------------------------------//
+Watchdog g_wd = {.timer = 0,.frequency.i = 100};
+
 // Internal management -------------------------------------------------------//
 long g_lastPosition = 0;
 long g_lastSpeed = 0;
@@ -95,6 +98,8 @@ unsigned char g_lastMode = 0xFF;
  */
 int main( )
 {
+    unsigned char spiError = 0;
+
     initIOs();
     initTimer();
     initSPI();
@@ -108,11 +113,18 @@ int main( )
     {
         process_LED();
         process_current();
+
+        // SPI buffer management.
+        spiError = process_SPI();
+
+        // If SPI error is occured or watchdog timout, we select the safe mode.
+        if(spiError == SPI_ERROR_DATA || g_wd.timer >= (T2_FREQ / g_wd.frequency.i))
+        {
+            g_mode = NO_SPI_COM;
+            g_spi.index = 0;
+        }
+
         process_mode();
-
-        if(process_SPI() == SPI_ERROR_DATA)
-            g_mode = DRIVER_OPEN;
-
         process_loop();
     }
 
@@ -379,6 +391,7 @@ void process_mode( )
                 g_led.frequency_B = 10;
                 break;
 
+            case NO_SPI_COM:
             default:
                 DRIVER_COAST = 0;// Motor driver power off.
                 g_led.frequency_A = 15;
@@ -393,7 +406,7 @@ unsigned char process_SPI( )
 {
     // No SPI buffer treatment if it is not full.
     if(g_spi.index != SPI_MAX_SIZE)
-        return SPI_NO_ERROR;
+        return SPI_NO_DATA;
 
     // Reset the index of SPI buffer.
     g_spi.index = 0;
@@ -669,6 +682,7 @@ void __attribute__( (interrupt,no_auto_psv) ) _T2Interrupt( void )
     WriteTimer2(0);
     _T2IF = 0;
     g_current.timer++;
+    g_wd.timer++;
 }
 
 /**
@@ -692,6 +706,9 @@ void __attribute__( (interrupt,no_auto_psv) ) _SPI1Interrupt( void )
     }
     else
     {
+        // If SPI bytes are receided, we restart watchdog.
+        g_wd.timer = 0;
+
         if(g_spi.index < SPI_MAX_SIZE)
         {
             g_spi.rx[g_spi.index] = SPI1BUF;

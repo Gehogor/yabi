@@ -41,6 +41,7 @@
 #define DRIVER_OPEN 0x01
 #define OPEN_LOOP   0x02
 #define CLOSE_LOOP  0x03
+#define NO_SPI_COM  0xFE
 
 /* Data management -----------------------------------------------------------*/
 union S32_U8 {
@@ -72,5 +73,12 @@ typedef struct {
     long busFrequency;
     long stepPos;
 } Interpolation;
+
+// Watchdog managmement ------------------------------------------------------//
+typedef struct
+{
+    volatile unsigned long timer;
+    union U16_U8 frequency;
+} Watchdog;
 
 #endif	/* _YAXITYPE_H_ */
