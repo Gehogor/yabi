@@ -56,9 +56,8 @@ typedef struct
     volatile unsigned long timer;
     unsigned long frequency_A;
     unsigned long frequency_B;
-    unsigned char mode;
 } Led;
-Led g_led = {.timer = 0,.frequency_A = 10,.frequency_B = 10,.mode = 0};
+Led g_led = {.timer = 0,.frequency_A = 10,.frequency_B = 10};
 
 // Current management --------------------------------------------------------//
 typedef struct
@@ -302,24 +301,15 @@ void initDriver( void )
 
 void process_LED( )
 {
-    if(g_led.timer >= (T1_FREQ / g_led.frequency_A)
-            && g_led.mode < 3)
+    if(g_led.timer >= (T1_FREQ / g_led.frequency_A) && LED == 1)
     {
-        g_led.mode++;
         g_led.timer = 0;
-        LED = ~LED;
+        LED = 0;
     }
-    else if(g_led.timer >= (T1_FREQ / g_led.frequency_B)
-            && g_led.mode >= 3
-            && g_led.mode < 6)
+    else if(g_led.timer >= (T1_FREQ / g_led.frequency_B) && LED == 0)
     {
-        g_led.mode++;
         g_led.timer = 0;
-        LED = ~LED;
-    }
-    else if(g_led.mode >= 6)
-    {
-        g_led.mode = 0;
+        LED = 1;
     }
 }
 
@@ -395,8 +385,8 @@ void process_mode( )
             case NO_SPI_COM:
             default:
                 DRIVER_COAST = 0;// Motor driver power off.
-                g_led.frequency_A = 15;
-                g_led.frequency_B = 5;
+                g_led.frequency_A = 10;
+                g_led.frequency_B = 1;
                 break;
         }
         g_lastMode = g_mode;
