@@ -21,27 +21,33 @@
 #define IV_TACHY    0
 
 // Communication parameters --------------------------------------------------//
-#define SPI_START           0x5E
-#define SPI_END             0xE5
-#define SPI_TARGET          0x01
-#define SPI_MODE_READ       0x02
-#define SPI_MODE_WRITE      0x03
-#define SPI_PID_READ        0x04
-#define SPI_PID_WRITE       0x05
-#define SPI_POSITION_WRITE  0x06
+#define SPI_NO_DATA             0x00
 
-#define SPI_NO_DATA         0x00
-#define SPI_NO_ERROR        0x01
-#define SPI_UNCKNOW         0xF6
-#define SPI_ERROR_DATA      0xF7
-#define SPI_MAX_SIZE        18
+#define SPI_START               0x5E
+#define SPI_END                 0xE5
+#define SPI_TARGET              0x01
+#define SPI_MODE_READ           0x02
+#define SPI_MODE_WRITE          0x03
+#define SPI_PID_READ            0x04
+#define SPI_PID_WRITE           0x05
+#define SPI_POSITION_WRITE      0x06
+#define SPI_POS_LAG_ERROR_READ  0x07
+#define SPI_POS_LAG_ERROR_WRITE 0x08
+#define SPI_MAX_SIZE            19
+
+// Errors management ---------------------------------------------------------//
+#define SPI_DATA_OK     0x00
+#define SPI_DATA_ERROR  0x01
+#define SPI_UNCKNOW     0x02
+#define SPI_LAG_ERROR   0x03
+#define SPI_WATCHDOG    0x04
 
 // Mode of state machine -----------------------------------------------------//
-#define SIMULATOR   0x00
-#define DRIVER_OPEN 0x01
-#define OPEN_LOOP   0x02
-#define CLOSE_LOOP  0x03
-#define NO_SPI_COM  0xFE
+#define SIMULATOR       0x00
+#define DRIVER_OPEN     0x01
+#define OPEN_LOOP       0x02
+#define CLOSE_LOOP      0x03
+#define ERROR_DRIVER    0x04
 
 /* Data management -----------------------------------------------------------*/
 union S32_U8 {

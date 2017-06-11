@@ -28,6 +28,7 @@
 
 // Standard library
 #include <stdio.h>
+#include <math.h>
 
 // Current project
 #include "Config.h"
@@ -45,10 +46,13 @@ union S32_U8 g_targetPos = {.l = 0};
 union S32_U8 g_targetSpeed = {.l = 0};
 
 unsigned char g_mode = SIMULATOR;
+unsigned char g_error = SIMULATOR;
 
 D32 g_kp = {.value = 0.0,.bus.l = 0};
 D32 g_ki = {.value = 0.0,.bus.l = 0};
 D32 g_kd = {.value = 0.0,.bus.l = 0};
+
+union S32_U8 g_positionLagError = {.l = 0};
 
 // Led managmement -----------------------------------------------------------//
 typedef struct
@@ -98,8 +102,6 @@ unsigned char g_lastMode = 0xFF;
  */
 int main( )
 {
-    unsigned char spiError = 0;
-
     initIOs();
     initTimer();
     initSPI();
@@ -114,13 +116,19 @@ int main( )
         process_LED();
         process_current();
 
-        // SPI buffer management.
-        spiError = process_SPI();
-
-        // If SPI error is occured or watchdog timout, we select the safe mode.
-        if(spiError == SPI_ERROR_DATA || g_wd.timer >= (T2_FREQ / g_wd.frequency.i))
+        // SPI buffer management, if SPI error is occured we select the safe mode
+        if(process_SPI() == SPI_DATA_ERROR)
         {
-            g_mode = NO_SPI_COM;
+            g_mode = ERROR_DRIVER;
+            g_error = SPI_DATA_ERROR;
+            g_spi.index = 0;
+        }
+
+        // If watchdog is timout, we select the safe mode.
+        if(g_wd.timer >= (T2_FREQ / g_wd.frequency.i))
+        {
+            g_mode = ERROR_DRIVER;
+            g_error = SPI_WATCHDOG;
             g_spi.index = 0;
         }
 
@@ -382,7 +390,7 @@ void process_mode( )
                 g_led.frequency_B = 10;
                 break;
 
-            case NO_SPI_COM:
+            case ERROR_DRIVER:
             default:
                 DRIVER_COAST = 0;// Motor driver power off.
                 g_led.frequency_A = 10;
@@ -403,7 +411,7 @@ unsigned char process_SPI( )
     g_spi.index = 0;
 
     if(g_spi.rx[0] != SPI_START)
-        return SPI_ERROR_DATA;
+        return createError(SPI_DATA_ERROR);
 
     switch(g_spi.rx[1])
     {
@@ -431,14 +439,20 @@ unsigned char process_SPI( )
             return process_SPI_positionWrite();
             break;
 
+        case SPI_POS_LAG_ERROR_READ:
+            return process_SPI_positionLafErrorRead();
+            break;
+
+        case SPI_POS_LAG_ERROR_WRITE:
+            return process_SPI_positionLafErrorWrite();
+            break;
+
         default:
-            g_spi.tx[0] = SPI_START;
-            g_spi.tx[1] = SPI_UNCKNOW;
-            g_spi.tx[2] = SPI_END;
+            createError(SPI_UNCKNOW);
             break;
     }
 
-    return SPI_ERROR_DATA;
+    return SPI_DATA_ERROR;
 }
 
 void process_loop( )
@@ -470,6 +484,13 @@ void process_loop( )
 
     // Compute the actual position error.
     double posError = g_currentTargetPos - g_position.l;
+
+    if(fabs(posError) >= g_positionLagError.l)
+    {
+        g_mode = ERROR_DRIVER;
+        return;
+    }
+
     g_errorSum += posError;
 
     double cmd = posError * g_kp.value + g_errorSum * g_ki.value;
@@ -489,7 +510,7 @@ void process_loop( )
 unsigned char process_SPI_target( )
 {
     if(g_spi.rx[10] != SPI_END || g_spi.rx[17] != SPI_END)
-        return SPI_ERROR_DATA;
+        return SPI_DATA_ERROR;
 
     // Memorize the last target position command.
     g_currentTargetPos = g_targetPos.l;
@@ -527,19 +548,20 @@ unsigned char process_SPI_target( )
     g_spi.tx[14] = g_current.value.c[0];
     g_spi.tx[15] = g_current.value.c[1];
 
-    g_spi.tx[16] = SPI_END;
+    g_spi.tx[16] = g_error;
+    g_spi.tx[17] = SPI_END;
 
     // Reset index for the new interpolation.
     const long count = g_ctrl.loopFrequency / g_ctrl.busFrequency;
     g_ctrl.stepPos = (g_targetPos.l - g_currentTargetPos) / count;
 
-    return SPI_NO_ERROR;
+    return SPI_DATA_OK;
 }
 
 unsigned char process_SPI_modeRead( )
 {
-    if(g_spi.rx[2] != SPI_END || g_spi.rx[17] != SPI_END)
-        return SPI_ERROR_DATA;
+    if(g_spi.rx[2] != SPI_END || g_spi.rx[SPI_MAX_SIZE-1] != SPI_END)
+        return SPI_DATA_ERROR;
 
     // Set the current mode to SPI buffer.
     g_spi.tx[0] = SPI_START;
@@ -547,13 +569,13 @@ unsigned char process_SPI_modeRead( )
     g_spi.tx[2] = g_mode;
     g_spi.tx[3] = SPI_END;
 
-    return SPI_NO_ERROR;
+    return SPI_DATA_OK;
 }
 
 unsigned char process_SPI_modeWrite( )
 {
-    if(g_spi.rx[3] != SPI_END || g_spi.rx[17] != SPI_END)
-        return SPI_ERROR_DATA;
+    if(g_spi.rx[3] != SPI_END || g_spi.rx[SPI_MAX_SIZE-1] != SPI_END)
+        return SPI_DATA_ERROR;
 
     // Get the new mode from SPI buffer.
     g_mode = g_spi.rx[2];
@@ -562,13 +584,13 @@ unsigned char process_SPI_modeWrite( )
     g_spi.tx[1] = SPI_MODE_WRITE;
     g_spi.tx[2] = SPI_END;
 
-    return SPI_NO_ERROR;
+    return SPI_DATA_OK;
 }
 
 unsigned char process_SPI_PID_read( )
 {
-    if(g_spi.rx[2] != SPI_END || g_spi.rx[17] != SPI_END)
-        return SPI_ERROR_DATA;
+    if(g_spi.rx[2] != SPI_END || g_spi.rx[SPI_MAX_SIZE-1] != SPI_END)
+        return SPI_DATA_ERROR;
 
     g_kp.bus.l = g_kp.value * 65536.0;
     g_ki.bus.l = g_ki.value * 65536.0;
@@ -595,13 +617,13 @@ unsigned char process_SPI_PID_read( )
 
     g_spi.tx[14] = SPI_END;
 
-    return SPI_NO_ERROR;
+    return SPI_DATA_OK;
 }
 
 unsigned char process_SPI_PID_write( )
 {
-    if(g_spi.rx[14] != SPI_END || g_spi.rx[17] != SPI_END)
-        return SPI_ERROR_DATA;
+    if(g_spi.rx[14] != SPI_END || g_spi.rx[SPI_MAX_SIZE-1] != SPI_END)
+        return SPI_DATA_ERROR;
 
     // Set the buffer for response to SPI.
     g_spi.tx[0] = SPI_START;
@@ -631,13 +653,13 @@ unsigned char process_SPI_PID_write( )
     g_ki.value = (double)g_ki.bus.l / 65536.0;
     g_kd.value = (double)g_kd.bus.l / 65536.0;
 
-    return SPI_NO_ERROR;
+    return SPI_DATA_OK;
 }
 
 unsigned char process_SPI_positionWrite( )
 {
-    if(g_spi.rx[6] != SPI_END || g_spi.rx[17] != SPI_END)
-        return SPI_ERROR_DATA;
+    if(g_spi.rx[6] != SPI_END || g_spi.rx[SPI_MAX_SIZE-1] != SPI_END)
+        return SPI_DATA_ERROR;
 
     // Set the buffer for response to SPI.
     g_spi.tx[0] = SPI_START;
@@ -653,7 +675,54 @@ unsigned char process_SPI_positionWrite( )
     g_encoderU16 = g_position.l & 0xFFFF0000;
     WriteQEI(g_position.l);
 
-    return SPI_NO_ERROR;
+    return SPI_DATA_OK;
+}
+
+unsigned char process_SPI_positionLafErrorRead( )
+{
+    if(g_spi.rx[2] != SPI_END || g_spi.rx[SPI_MAX_SIZE-1] != SPI_END)
+        return SPI_DATA_ERROR;
+
+    // Set the current PID values to SPI buffer.
+    g_spi.tx[0] = SPI_START;
+    g_spi.tx[1] = SPI_POS_LAG_ERROR_READ;
+
+    g_spi.tx[2] = g_positionLagError.c[0];
+    g_spi.tx[3] = g_positionLagError.c[1];
+    g_spi.tx[4] = g_positionLagError.c[2];
+    g_spi.tx[5] = g_positionLagError.c[3];
+
+    g_spi.tx[6] = SPI_END;
+
+    return SPI_DATA_OK;
+}
+
+unsigned char process_SPI_positionLafErrorWrite( )
+{
+    if(g_spi.rx[6] != SPI_END || g_spi.rx[SPI_MAX_SIZE-1] != SPI_END)
+        return SPI_DATA_ERROR;
+
+    // Set the buffer for response to SPI.
+    g_spi.tx[0] = SPI_START;
+    g_spi.tx[1] = SPI_POS_LAG_ERROR_WRITE;
+    g_spi.tx[2] = SPI_END;
+
+    // Get new value kp of PID from SPI.
+    g_positionLagError.c[0] = g_spi.rx[2];
+    g_positionLagError.c[1] = g_spi.rx[3];
+    g_positionLagError.c[2] = g_spi.rx[4];
+    g_positionLagError.c[3] = g_spi.rx[5];
+
+    return SPI_DATA_OK;
+}
+
+unsigned char createError( unsigned char error )
+{
+    g_spi.tx[0] = SPI_START;
+    g_spi.tx[1] = error;
+    g_spi.tx[2] = SPI_END;
+
+    return error;
 }
 
 /**

@@ -79,6 +79,10 @@ unsigned char process_SPI_modeWrite();
 unsigned char process_SPI_PID_read();
 unsigned char process_SPI_PID_write();
 unsigned char process_SPI_positionWrite();
+unsigned char process_SPI_positionLafErrorRead();
+unsigned char process_SPI_positionLafErrorWrite();
+
+unsigned char createError(unsigned char error);
 
 // Interrupt functions -------------------------------------------------------//
 void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void);
