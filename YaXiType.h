@@ -21,8 +21,6 @@
 #define IV_TACHY    0
 
 // Communication parameters --------------------------------------------------//
-#define SPI_NO_DATA             0x00
-
 #define SPI_START               0x5E
 #define SPI_END                 0xE5
 #define SPI_TARGET              0x01
@@ -36,11 +34,11 @@
 #define SPI_MAX_SIZE            19
 
 // Errors management ---------------------------------------------------------//
-#define SPI_DATA_OK     0x00
-#define SPI_DATA_ERROR  0x01
-#define SPI_UNCKNOW     0x02
-#define SPI_LAG_ERROR   0x03
-#define SPI_WATCHDOG    0x04
+#define SUCCESS         0x00
+#define SPI_DATA_ERROR  0xF0
+#define SPI_UNCKNOW     0xF1
+#define POS_LAG_ERROR   0xF2
+#define SPI_WATCHDOG    0xF3
 
 // Mode of state machine -----------------------------------------------------//
 #define SIMULATOR       0x00
