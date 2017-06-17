@@ -117,23 +117,23 @@ int main( )
     while(1)
     {
         process_LED();
-        process_current();
+        //process_current();
 
         // SPI buffer management, if SPI error is occured we select the safe mode.
         spiState = process_SPI();
         if(spiState != SUCCESS)
         {
-            /*g_mode = ERROR_DRIVER;
+            g_mode = ERROR_DRIVER;
             g_error = spiState;
-            g_spi.index = 0;*/
+            g_spi.index = 0;
         }
 
         // If watchdog is timout, we select the safe mode.
         if(g_wd.timer >= (T2_FREQ / g_wd.frequency.i))
         {
-            /*g_mode = ERROR_DRIVER;
+            g_mode = ERROR_DRIVER;
             g_error = SPI_WATCHDOG;
-            g_spi.index = 0;*/
+            g_spi.index = 0;
         }
 
         // Manage the driver mode functionning the card state.
@@ -143,9 +143,8 @@ int main( )
         loopState = process_loop();
         if(loopState != SUCCESS)
         {
-            /*g_mode = ERROR_DRIVER;
+            g_mode = ERROR_DRIVER;
             g_error = loopState;
-            g_spi.index = 0;*/
         }
     }
 
@@ -520,7 +519,7 @@ unsigned char process_loop( )
 
 unsigned char process_SPI_target( )
 {
-    if(g_spi.rx[10] != SPI_END || g_spi.rx[17] != SPI_END)
+    if(g_spi.rx[10] != SPI_END || g_spi.rx[SPI_MAX_SIZE - 1] != SPI_END)
         return SPI_DATA_ERROR;
 
     // Memorize the last target position command.
@@ -683,9 +682,7 @@ unsigned char process_SPI_positionWrite( )
     g_position.c[2] = g_spi.rx[4];
     g_position.c[3] = g_spi.rx[5];
 
-    g_encoderU16 = g_position.l & 0xFFFF0000;
-    WriteQEI(g_position.l);
-
+    g_encoderU16 = g_position.l - ReadQEI();
     return SUCCESS;
 }
 
