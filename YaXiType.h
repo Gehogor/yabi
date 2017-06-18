@@ -34,7 +34,7 @@
 #define SPI_MAX_SIZE            19
 
 // Errors management ---------------------------------------------------------//
-#define SUCCESS         0x00
+#define ALL_OK          0x00
 #define SPI_DATA_ERROR  0xF0
 #define SPI_UNCKNOW     0xF1
 #define POS_LAG_ERROR   0xF2

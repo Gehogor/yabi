@@ -103,7 +103,7 @@ int main( )
 
         // SPI buffer management, if SPI error is occured we select the safe mode.
         spiState = process_SPI();
-        if(spiState != SUCCESS)
+        if(spiState != ALL_OK)
         {
             g_mode = ERROR_DRIVER;
             g_error = spiState;
@@ -356,6 +356,7 @@ void process_mode( )
                 SetDCOC1PWM(HALF_PWM_MAX);
                 g_led.frequency_A = 1;
                 g_led.frequency_B = 1;
+                g_error = ALL_OK;
                 break;
 
             case DRIVER_OPEN:
@@ -363,6 +364,7 @@ void process_mode( )
                 SetDCOC1PWM(HALF_PWM_MAX);
                 g_led.frequency_A = 2;
                 g_led.frequency_B = 2;
+                g_error = ALL_OK;
                 break;
 
             case OPEN_LOOP:
@@ -370,12 +372,14 @@ void process_mode( )
                 SetDCOC1PWM(HALF_PWM_MAX);
                 g_led.frequency_A = 5;
                 g_led.frequency_B = 5;
+                g_error = ALL_OK;
                 break;
 
             case CLOSE_LOOP:
                 DRIVER_COAST = 1;// Motor driver power on.
                 g_led.frequency_A = 10;
                 g_led.frequency_B = 10;
+                g_error = ALL_OK;
                 break;
 
             case ERROR_DRIVER:
@@ -393,7 +397,7 @@ unsigned char process_SPI( )
 {
     // No SPI buffer treatment if it is not full.
     if(g_spi.index != SPI_MAX_SIZE)
-        return SUCCESS;
+        return ALL_OK;
 
     // Reset the index of SPI buffer.
     g_spi.index = 0;
@@ -542,7 +546,7 @@ unsigned char process_SPI_target( )
     const long count = g_ctrl.loopFrequency / g_ctrl.busFrequency;
     g_ctrl.stepPos = (g_axis.targetPos.l - g_ctrl.currentTargetPos) / count;
 
-    return SUCCESS;
+    return ALL_OK;
 }
 
 unsigned char process_SPI_modeRead( )
@@ -556,7 +560,7 @@ unsigned char process_SPI_modeRead( )
     g_spi.tx[2] = g_mode;
     g_spi.tx[3] = SPI_END;
 
-    return SUCCESS;
+    return ALL_OK;
 }
 
 unsigned char process_SPI_modeWrite( )
@@ -571,7 +575,7 @@ unsigned char process_SPI_modeWrite( )
     g_spi.tx[1] = SPI_MODE_WRITE;
     g_spi.tx[2] = SPI_END;
 
-    return SUCCESS;
+    return ALL_OK;
 }
 
 unsigned char process_SPI_PID_read( )
@@ -604,7 +608,7 @@ unsigned char process_SPI_PID_read( )
 
     g_spi.tx[14] = SPI_END;
 
-    return SUCCESS;
+    return ALL_OK;
 }
 
 unsigned char process_SPI_PID_write( )
@@ -640,7 +644,7 @@ unsigned char process_SPI_PID_write( )
     g_pid.ki.value = (double)g_pid.ki.bus.l / 65536.0;
     g_pid.kd.value = (double)g_pid.kd.bus.l / 65536.0;
 
-    return SUCCESS;
+    return ALL_OK;
 }
 
 unsigned char process_SPI_positionWrite( )
@@ -660,7 +664,7 @@ unsigned char process_SPI_positionWrite( )
     g_axis.pos.c[3] = g_spi.rx[5];
 
     g_encoderU16 = g_axis.pos.l - ReadQEI();
-    return SUCCESS;
+    return ALL_OK;
 }
 
 unsigned char process_SPI_positionLafErrorRead( )
@@ -679,7 +683,7 @@ unsigned char process_SPI_positionLafErrorRead( )
 
     g_spi.tx[6] = SPI_END;
 
-    return SUCCESS;
+    return ALL_OK;
 }
 
 unsigned char process_SPI_positionLafErrorWrite( )
@@ -698,7 +702,7 @@ unsigned char process_SPI_positionLafErrorWrite( )
     g_axis.posLagErrorMax.c[2] = g_spi.rx[4];
     g_axis.posLagErrorMax.c[3] = g_spi.rx[5];
 
-    return SUCCESS;
+    return ALL_OK;
 }
 
 /**
