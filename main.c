@@ -35,9 +35,9 @@
 #include "YaXiType.h"
 
 // Axis parameters -----------------------------------------------------------//
-union S32_U8 g_position = {.l = 0};
-union S32_U8 g_speed = {.l = 0};
-union S32_U8 g_accel = {.l = 0};
+volatile union S32_U8 g_position = {.l = 0};
+volatile union S32_U8 g_speed = {.l = 0};
+volatile union S32_U8 g_accel = {.l = 0};
 
 volatile long g_encoderU16 = 0;
 volatile long g_hallUnit = 0;
@@ -45,14 +45,14 @@ volatile long g_hallUnit = 0;
 union S32_U8 g_targetPos = {.l = 0};
 union S32_U8 g_targetSpeed = {.l = 0};
 
-unsigned char g_mode = SIMULATOR;
-unsigned char g_error = SIMULATOR;
+volatile unsigned char g_mode = SIMULATOR;
+volatile unsigned char g_error = SIMULATOR;
 
-D32 g_kp = {.value = 0.0,.bus.l = 0};
-D32 g_ki = {.value = 0.0,.bus.l = 0};
-D32 g_kd = {.value = 0.0,.bus.l = 0};
+volatile D32 g_kp = {.value = 0.0,.bus.l = 0};
+volatile D32 g_ki = {.value = 0.0,.bus.l = 0};
+volatile D32 g_kd = {.value = 0.0,.bus.l = 0};
 
-union S32_U8 g_positionLagError = {.l = 5000};
+volatile union S32_U8 g_positionLagError = {.l = 5000};
 
 // Led managmement -----------------------------------------------------------//
 typedef struct
@@ -92,7 +92,7 @@ Watchdog g_wd = {.timer = 0,.frequency.i = 100};
 // Internal management -------------------------------------------------------//
 long g_lastPosition = 0;
 long g_lastSpeed = 0;
-long g_currentTargetPos = 0;
+volatile long g_currentTargetPos = 0;
 double g_errorSum = 0.0;
 unsigned char g_lastMode = 0xFF;
 
@@ -103,7 +103,6 @@ unsigned char g_lastMode = 0xFF;
 int main( )
 {
     unsigned char spiState = 0;
-    unsigned char loopState = 0;
 
     initIOs();
     initTimer();
@@ -138,14 +137,6 @@ int main( )
 
         // Manage the driver mode functionning the card state.
         process_mode();
-
-        // Close loop for motor control.
-        loopState = process_loop();
-        if(loopState != SUCCESS)
-        {
-            g_mode = ERROR_DRIVER;
-            g_error = loopState;
-        }
     }
 
     CloseTimer1();
@@ -467,14 +458,8 @@ unsigned char process_SPI( )
     return SPI_DATA_ERROR;
 }
 
-unsigned char process_loop( )
+void process_loop( )
 {
-    // No process loop if the timer is not timeout.
-    if(g_ctrl.timer < (T1_FREQ / g_ctrl.loopFrequency))
-        return SUCCESS;
-
-    g_ctrl.timer = 0;
-
     // Compute the target position interpolated.
     g_currentTargetPos += g_ctrl.stepPos;
 
@@ -492,13 +477,17 @@ unsigned char process_loop( )
     g_lastSpeed = g_speed.l;
 
     if(g_mode != CLOSE_LOOP)
-        return SUCCESS;
+        return;
 
     // Compute the actual position error.
-    double posError = g_currentTargetPos - g_position.l;
+    const double posError = g_currentTargetPos - g_position.l;
 
     if(fabs(posError) >= g_positionLagError.l)
-        return POS_LAG_ERROR;
+    {
+        g_mode = ERROR_DRIVER;
+        g_error = POS_LAG_ERROR;
+        return;
+    }
 
     g_errorSum += posError;
 
@@ -514,7 +503,6 @@ unsigned char process_loop( )
         cmd = 0.0;
 
     SetDCOC1PWM(cmd);
-    return SUCCESS;
 }
 
 unsigned char process_SPI_target( )
@@ -731,8 +719,10 @@ void __attribute__( (interrupt,no_auto_psv) ) _T1Interrupt( void )
 {
     WriteTimer1(0);
     _T1IF = 0;
-    g_ctrl.timer++;
+    //g_ctrl.timer++;
     g_led.timer++;
+
+    process_loop();
 }
 
 /**
