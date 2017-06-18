@@ -35,66 +35,49 @@
 #include "YaXiType.h"
 
 // Axis parameters -----------------------------------------------------------//
-volatile union S32_U8 g_position = {.l = 0};
-volatile union S32_U8 g_speed = {.l = 0};
-volatile union S32_U8 g_accel = {.l = 0};
+Axis g_axis = {
+    .pos.l = 0,
+    .speed.l = 0,
+    .accel.l = 0,
+    .targetPos.l = 0,
+    .targetSpeed.l = 0,
+    .posLagErrorMax.l = 0
+};
 
 volatile long g_encoderU16 = 0;
 volatile long g_hallUnit = 0;
 
-union S32_U8 g_targetPos = {.l = 0};
-union S32_U8 g_targetSpeed = {.l = 0};
-
 volatile unsigned char g_mode = SIMULATOR;
 volatile unsigned char g_error = SIMULATOR;
 
-volatile D32 g_kp = {.value = 0.0,.bus.l = 0};
-volatile D32 g_ki = {.value = 0.0,.bus.l = 0};
-volatile D32 g_kd = {.value = 0.0,.bus.l = 0};
-
-volatile union S32_U8 g_positionLagError = {.l = 5000};
-
-// Led managmement -----------------------------------------------------------//
-typedef struct
-{
-    volatile unsigned long timer;
-    unsigned long frequency_A;
-    unsigned long frequency_B;
-} Led;
-Led g_led = {.timer = 0,.frequency_A = 10,.frequency_B = 10};
-
-// Current management --------------------------------------------------------//
-typedef struct
-{
-    union U16_U8 value;
-    union U16_U8 frequency;
-    unsigned char count;
-
-    volatile unsigned long timer;
-    unsigned char state;
-    unsigned long measure;
-    unsigned long average;
-} Current;
-Current g_current = {
-    .value.i = 0,.frequency.i = 500,.count = 5,
-    .timer = 0,.state = 0,.measure = 0,.average = 0
+PID g_pid = {
+    .kp.value = 0.0,.kp.bus.l = 0,
+    .ki.value = 0.0,.ki.bus.l = 0,
+    .kd.value = 0.0,.kd.bus.l = 0
 };
 
-// SPI workflow management ---------------------------------------------------//
+Led g_led = {.timer = 0,.frequency_A = 10,.frequency_B = 10};
+
+Current g_current = {
+    .value.i = 0,
+    .frequency.i = 500,
+    .count = 5,
+    .timer = 0,
+    .state = 0,
+    .measure = 0,
+    .average = 0
+};
+
 Com_SPI g_spi = {.index = 0};
 
-// Close loop interpolation management ---------------------------------------//
-Interpolation g_ctrl = {.timer = 0,.loopFrequency = 1000,.busFrequency = 200,.stepPos = 0};
+Interpolation g_ctrl = {
+    .loopFrequency = 1000,
+    .busFrequency = 200,
+    .stepPos = 0,
+    .currentTargetPos = 0
+};
 
-// Watchdog managmement ------------------------------------------------------//
 Watchdog g_wd = {.timer = 0,.frequency.i = 100};
-
-// Internal management -------------------------------------------------------//
-long g_lastPosition = 0;
-long g_lastSpeed = 0;
-volatile long g_currentTargetPos = 0;
-double g_errorSum = 0.0;
-unsigned char g_lastMode = 0xFF;
 
 /**
  * Main function, manage all initialization and continuous process.
@@ -312,12 +295,12 @@ void initDriver( void )
 
 void process_LED( )
 {
-    if(g_led.timer >= (T1_FREQ / g_led.frequency_A) && LED == 1)
+    if(g_led.timer >= (T2_FREQ / g_led.frequency_A) && LED == 1)
     {
         g_led.timer = 0;
         LED = 0;
     }
-    else if(g_led.timer >= (T1_FREQ / g_led.frequency_B) && LED == 0)
+    else if(g_led.timer >= (T2_FREQ / g_led.frequency_B) && LED == 0)
     {
         g_led.timer = 0;
         LED = 1;
@@ -362,7 +345,9 @@ void process_current( )
 
 void process_mode( )
 {
-    if(g_mode != g_lastMode)
+    static unsigned char lastMode = 0xFF;
+
+    if(g_mode != lastMode)
     {
         switch(g_mode)
         {
@@ -400,7 +385,7 @@ void process_mode( )
                 g_led.frequency_B = 1;
                 break;
         }
-        g_lastMode = g_mode;
+        lastMode = g_mode;
     }
 }
 
@@ -460,38 +445,42 @@ unsigned char process_SPI( )
 
 void process_loop( )
 {
+    static long lastPosition = 0;
+    static long lastSpeed = 0;
+    static double errorSum = 0.0;
+
     // Compute the target position interpolated.
-    g_currentTargetPos += g_ctrl.stepPos;
+    g_ctrl.currentTargetPos += g_ctrl.stepPos;
 
     if(g_mode == SIMULATOR)
         // Put the exact target position to the actual position in order to simulate.
-        g_position.l = g_currentTargetPos;
+        g_axis.pos.l = g_ctrl.currentTargetPos;
     else
         // Compute the exact position according to 16 bit overflow from QEI module.
-        g_position.l = g_encoderU16 + ReadQEI();
+        g_axis.pos.l = g_encoderU16 + ReadQEI();
 
-    g_speed.l = (g_position.l - g_lastPosition) * g_ctrl.loopFrequency;
-    g_accel.l = (g_speed.l - g_lastSpeed) * g_ctrl.loopFrequency;
+    g_axis.speed.l = (g_axis.pos.l - lastPosition) * g_ctrl.loopFrequency;
+    g_axis.accel.l = (g_axis.speed.l - lastSpeed) * g_ctrl.loopFrequency;
 
-    g_lastPosition = g_position.l;
-    g_lastSpeed = g_speed.l;
+    lastPosition = g_axis.pos.l;
+    lastSpeed = g_axis.speed.l;
 
     if(g_mode != CLOSE_LOOP)
         return;
 
     // Compute the actual position error.
-    const double posError = g_currentTargetPos - g_position.l;
+    const double posError = g_ctrl.currentTargetPos - g_axis.pos.l;
 
-    if(fabs(posError) >= g_positionLagError.l)
+    if(fabs(posError) >= g_axis.posLagErrorMax.l)
     {
         g_mode = ERROR_DRIVER;
         g_error = POS_LAG_ERROR;
         return;
     }
 
-    g_errorSum += posError;
+    errorSum += posError;
 
-    double cmd = posError * g_kp.value + g_errorSum * g_ki.value;
+    double cmd = posError * g_pid.kp.value + errorSum * g_pid.ki.value;
 
     // Offset for the PWM (0 -> 1480)
     cmd += HALF_PWM_MAX;
@@ -511,37 +500,37 @@ unsigned char process_SPI_target( )
         return SPI_DATA_ERROR;
 
     // Memorize the last target position command.
-    g_currentTargetPos = g_targetPos.l;
+    g_ctrl.currentTargetPos = g_axis.targetPos.l;
 
     // Get target position from SPI.
-    g_targetPos.c[0] = g_spi.rx[2];
-    g_targetPos.c[1] = g_spi.rx[3];
-    g_targetPos.c[2] = g_spi.rx[4];
-    g_targetPos.c[3] = g_spi.rx[5];
+    g_axis.targetPos.c[0] = g_spi.rx[2];
+    g_axis.targetPos.c[1] = g_spi.rx[3];
+    g_axis.targetPos.c[2] = g_spi.rx[4];
+    g_axis.targetPos.c[3] = g_spi.rx[5];
 
     // Get target speed from SPI.
-    g_targetSpeed.c[0] = g_spi.rx[6];
-    g_targetSpeed.c[1] = g_spi.rx[7];
-    g_targetSpeed.c[2] = g_spi.rx[8];
-    g_targetSpeed.c[3] = g_spi.rx[9];
+    g_axis.targetSpeed.c[0] = g_spi.rx[6];
+    g_axis.targetSpeed.c[1] = g_spi.rx[7];
+    g_axis.targetSpeed.c[2] = g_spi.rx[8];
+    g_axis.targetSpeed.c[3] = g_spi.rx[9];
 
     g_spi.tx[0] = SPI_START;
     g_spi.tx[1] = SPI_TARGET;
 
-    g_spi.tx[2] = g_position.c[0];
-    g_spi.tx[3] = g_position.c[1];
-    g_spi.tx[4] = g_position.c[2];
-    g_spi.tx[5] = g_position.c[3];
+    g_spi.tx[2] = g_axis.pos.c[0];
+    g_spi.tx[3] = g_axis.pos.c[1];
+    g_spi.tx[4] = g_axis.pos.c[2];
+    g_spi.tx[5] = g_axis.pos.c[3];
 
-    g_spi.tx[6] = g_speed.c[0];
-    g_spi.tx[7] = g_speed.c[1];
-    g_spi.tx[8] = g_speed.c[2];
-    g_spi.tx[9] = g_speed.c[3];
+    g_spi.tx[6] = g_axis.speed.c[0];
+    g_spi.tx[7] = g_axis.speed.c[1];
+    g_spi.tx[8] = g_axis.speed.c[2];
+    g_spi.tx[9] = g_axis.speed.c[3];
 
-    g_spi.tx[10] = g_accel.c[0];
-    g_spi.tx[11] = g_accel.c[1];
-    g_spi.tx[12] = g_accel.c[2];
-    g_spi.tx[13] = g_accel.c[3];
+    g_spi.tx[10] = g_axis.accel.c[0];
+    g_spi.tx[11] = g_axis.accel.c[1];
+    g_spi.tx[12] = g_axis.accel.c[2];
+    g_spi.tx[13] = g_axis.accel.c[3];
 
     g_spi.tx[14] = g_current.value.c[0];
     g_spi.tx[15] = g_current.value.c[1];
@@ -551,7 +540,7 @@ unsigned char process_SPI_target( )
 
     // Reset index for the new interpolation.
     const long count = g_ctrl.loopFrequency / g_ctrl.busFrequency;
-    g_ctrl.stepPos = (g_targetPos.l - g_currentTargetPos) / count;
+    g_ctrl.stepPos = (g_axis.targetPos.l - g_ctrl.currentTargetPos) / count;
 
     return SUCCESS;
 }
@@ -590,28 +579,28 @@ unsigned char process_SPI_PID_read( )
     if(g_spi.rx[2] != SPI_END || g_spi.rx[SPI_MAX_SIZE - 1] != SPI_END)
         return SPI_DATA_ERROR;
 
-    g_kp.bus.l = g_kp.value * 65536.0;
-    g_ki.bus.l = g_ki.value * 65536.0;
-    g_kd.bus.l = g_kd.value * 65536.0;
+    g_pid.kp.bus.l = g_pid.kp.value * 65536.0;
+    g_pid.ki.bus.l = g_pid.ki.value * 65536.0;
+    g_pid.kd.bus.l = g_pid.kd.value * 65536.0;
 
     // Set the current PID values to SPI buffer.
     g_spi.tx[0] = SPI_START;
     g_spi.tx[1] = SPI_PID_READ;
 
-    g_spi.tx[2] = g_kp.bus.c[0];
-    g_spi.tx[3] = g_kp.bus.c[1];
-    g_spi.tx[4] = g_kp.bus.c[2];
-    g_spi.tx[5] = g_kp.bus.c[3];
+    g_spi.tx[2] = g_pid.kp.bus.c[0];
+    g_spi.tx[3] = g_pid.kp.bus.c[1];
+    g_spi.tx[4] = g_pid.kp.bus.c[2];
+    g_spi.tx[5] = g_pid.kp.bus.c[3];
 
-    g_spi.tx[6] = g_ki.bus.c[0];
-    g_spi.tx[7] = g_ki.bus.c[1];
-    g_spi.tx[8] = g_ki.bus.c[2];
-    g_spi.tx[9] = g_ki.bus.c[3];
+    g_spi.tx[6] = g_pid.ki.bus.c[0];
+    g_spi.tx[7] = g_pid.ki.bus.c[1];
+    g_spi.tx[8] = g_pid.ki.bus.c[2];
+    g_spi.tx[9] = g_pid.ki.bus.c[3];
 
-    g_spi.tx[10] = g_kd.bus.c[0];
-    g_spi.tx[11] = g_kd.bus.c[1];
-    g_spi.tx[12] = g_kd.bus.c[2];
-    g_spi.tx[13] = g_kd.bus.c[3];
+    g_spi.tx[10] = g_pid.kd.bus.c[0];
+    g_spi.tx[11] = g_pid.kd.bus.c[1];
+    g_spi.tx[12] = g_pid.kd.bus.c[2];
+    g_spi.tx[13] = g_pid.kd.bus.c[3];
 
     g_spi.tx[14] = SPI_END;
 
@@ -629,27 +618,27 @@ unsigned char process_SPI_PID_write( )
     g_spi.tx[2] = SPI_END;
 
     // Get new value kp of PID from SPI.
-    g_kp.bus.c[0] = g_spi.rx[2];
-    g_kp.bus.c[1] = g_spi.rx[3];
-    g_kp.bus.c[2] = g_spi.rx[4];
-    g_kp.bus.c[3] = g_spi.rx[5];
+    g_pid.kp.bus.c[0] = g_spi.rx[2];
+    g_pid.kp.bus.c[1] = g_spi.rx[3];
+    g_pid.kp.bus.c[2] = g_spi.rx[4];
+    g_pid.kp.bus.c[3] = g_spi.rx[5];
 
     // Get new value ki of PID from SPI.
-    g_ki.bus.c[0] = g_spi.rx[6];
-    g_ki.bus.c[1] = g_spi.rx[7];
-    g_ki.bus.c[2] = g_spi.rx[8];
-    g_ki.bus.c[3] = g_spi.rx[9];
+    g_pid.ki.bus.c[0] = g_spi.rx[6];
+    g_pid.ki.bus.c[1] = g_spi.rx[7];
+    g_pid.ki.bus.c[2] = g_spi.rx[8];
+    g_pid.ki.bus.c[3] = g_spi.rx[9];
 
     // Get new value kd of PID from SPI.
-    g_kd.bus.c[0] = g_spi.rx[10];
-    g_kd.bus.c[1] = g_spi.rx[11];
-    g_kd.bus.c[2] = g_spi.rx[12];
-    g_kd.bus.c[3] = g_spi.rx[13];
+    g_pid.kd.bus.c[0] = g_spi.rx[10];
+    g_pid.kd.bus.c[1] = g_spi.rx[11];
+    g_pid.kd.bus.c[2] = g_spi.rx[12];
+    g_pid.kd.bus.c[3] = g_spi.rx[13];
 
     // Set the kp, ki and kd values.
-    g_kp.value = (double)g_kp.bus.l / 65536.0;
-    g_ki.value = (double)g_ki.bus.l / 65536.0;
-    g_kd.value = (double)g_kd.bus.l / 65536.0;
+    g_pid.kp.value = (double)g_pid.kp.bus.l / 65536.0;
+    g_pid.ki.value = (double)g_pid.ki.bus.l / 65536.0;
+    g_pid.kd.value = (double)g_pid.kd.bus.l / 65536.0;
 
     return SUCCESS;
 }
@@ -665,12 +654,12 @@ unsigned char process_SPI_positionWrite( )
     g_spi.tx[2] = SPI_END;
 
     // Get new value kp of PID from SPI.
-    g_position.c[0] = g_spi.rx[2];
-    g_position.c[1] = g_spi.rx[3];
-    g_position.c[2] = g_spi.rx[4];
-    g_position.c[3] = g_spi.rx[5];
+    g_axis.pos.c[0] = g_spi.rx[2];
+    g_axis.pos.c[1] = g_spi.rx[3];
+    g_axis.pos.c[2] = g_spi.rx[4];
+    g_axis.pos.c[3] = g_spi.rx[5];
 
-    g_encoderU16 = g_position.l - ReadQEI();
+    g_encoderU16 = g_axis.pos.l - ReadQEI();
     return SUCCESS;
 }
 
@@ -683,10 +672,10 @@ unsigned char process_SPI_positionLafErrorRead( )
     g_spi.tx[0] = SPI_START;
     g_spi.tx[1] = SPI_POS_LAG_ERROR_READ;
 
-    g_spi.tx[2] = g_positionLagError.c[0];
-    g_spi.tx[3] = g_positionLagError.c[1];
-    g_spi.tx[4] = g_positionLagError.c[2];
-    g_spi.tx[5] = g_positionLagError.c[3];
+    g_spi.tx[2] = g_axis.posLagErrorMax.c[0];
+    g_spi.tx[3] = g_axis.posLagErrorMax.c[1];
+    g_spi.tx[4] = g_axis.posLagErrorMax.c[2];
+    g_spi.tx[5] = g_axis.posLagErrorMax.c[3];
 
     g_spi.tx[6] = SPI_END;
 
@@ -704,10 +693,10 @@ unsigned char process_SPI_positionLafErrorWrite( )
     g_spi.tx[2] = SPI_END;
 
     // Get new value kp of PID from SPI.
-    g_positionLagError.c[0] = g_spi.rx[2];
-    g_positionLagError.c[1] = g_spi.rx[3];
-    g_positionLagError.c[2] = g_spi.rx[4];
-    g_positionLagError.c[3] = g_spi.rx[5];
+    g_axis.posLagErrorMax.c[0] = g_spi.rx[2];
+    g_axis.posLagErrorMax.c[1] = g_spi.rx[3];
+    g_axis.posLagErrorMax.c[2] = g_spi.rx[4];
+    g_axis.posLagErrorMax.c[3] = g_spi.rx[5];
 
     return SUCCESS;
 }
@@ -719,9 +708,7 @@ void __attribute__( (interrupt,no_auto_psv) ) _T1Interrupt( void )
 {
     WriteTimer1(0);
     _T1IF = 0;
-    //g_ctrl.timer++;
-    g_led.timer++;
-
+    
     process_loop();
 }
 
@@ -732,6 +719,8 @@ void __attribute__( (interrupt,no_auto_psv) ) _T2Interrupt( void )
 {
     WriteTimer2(0);
     _T2IF = 0;
+    
+    g_led.timer++;
     g_current.timer++;
     g_wd.timer++;
 }

@@ -70,7 +70,6 @@ void process_LED();
 void process_current();
 void process_mode();
 unsigned char process_SPI();
-
 void process_loop();
 
 unsigned char process_SPI_target();
