@@ -451,7 +451,6 @@ unsigned char process_SPI( )
 
 void process_loop( )
 {
-    static unsigned char index = 0;
     static long lastPosition = 0;
     static long lastSpeed = 0;
     static double errorSum = 0.0;
@@ -474,11 +473,6 @@ void process_loop( )
     else
         // Compute the exact position according to 16 bit overflow from QEI module.
         g_axis.pos.l = g_encoderU16 + ReadQEI();
-
-    if(index < 4)
-        index++;
-    else
-        index = 0;
 
     g_axis.speed.l = (g_axis.pos.l - lastPosition) * g_ctrl.loopFrequency;
     g_axis.accel.l = (g_axis.speed.l - lastSpeed) * g_ctrl.loopFrequency;
