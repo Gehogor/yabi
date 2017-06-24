@@ -19,7 +19,8 @@
 #include <adc10.h>
 
 // Timer parameters ----------------------------------------------------------//
-#define PR_T1       29500   // 1kHz
+#define T1_FREQ     10000   // 10kHz
+#define PR_T1       2938//29500    // 10kHz
 
 #define T2_FREQ     10000   // 10kHz
 #define PR_T2       2938    // 10kHz

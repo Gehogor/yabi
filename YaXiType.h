@@ -72,8 +72,9 @@ typedef struct {
 
 /* Close loop interpolation management ---------------------------------------*/
 typedef struct {
-    long loopFrequency;
-    long busFrequency;
+    unsigned long timer;
+    volatile long loopFrequency;
+    volatile long busFrequency;
     volatile long stepPos;
     volatile long currentTargetPos;
 } Interpolation;

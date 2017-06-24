@@ -71,7 +71,8 @@ Current g_current = {
 Com_SPI g_spi = {.index = 0};
 
 Interpolation g_ctrl = {
-    .loopFrequency = 1000,
+    .timer = 0,
+    .loopFrequency = 2000,
     .busFrequency = 200,
     .stepPos = 0,
     .currentTargetPos = 0
@@ -107,7 +108,6 @@ int main( )
         {
             g_mode = ERROR_DRIVER;
             g_error = spiState;
-            g_spi.index = 0;
         }
 
         // If watchdog is timout, we select the safe mode.
@@ -373,6 +373,7 @@ void process_mode( )
                 g_led.frequency_A = 5;
                 g_led.frequency_B = 5;
                 g_error = ALL_OK;
+                //g_ctrl.currentTargetPos = g_axis.pos.l;
                 break;
 
             case CLOSE_LOOP:
@@ -380,6 +381,7 @@ void process_mode( )
                 g_led.frequency_A = 10;
                 g_led.frequency_B = 10;
                 g_error = ALL_OK;
+                g_ctrl.currentTargetPos = g_axis.pos.l;
                 break;
 
             case ERROR_DRIVER:
@@ -449,9 +451,19 @@ unsigned char process_SPI( )
 
 void process_loop( )
 {
+    static unsigned char index = 0;
     static long lastPosition = 0;
     static long lastSpeed = 0;
     static double errorSum = 0.0;
+
+    // Manage the time to have a cyclic time configurable.
+    if(g_ctrl.timer < T1_FREQ / g_ctrl.loopFrequency)
+    {
+        g_ctrl.timer++;
+        return;
+    }
+    else
+        g_ctrl.timer = 0;
 
     // Compute the target position interpolated.
     g_ctrl.currentTargetPos += g_ctrl.stepPos;
@@ -463,6 +475,11 @@ void process_loop( )
         // Compute the exact position according to 16 bit overflow from QEI module.
         g_axis.pos.l = g_encoderU16 + ReadQEI();
 
+    if(index < 4)
+        index++;
+    else
+        index = 0;
+
     g_axis.speed.l = (g_axis.pos.l - lastPosition) * g_ctrl.loopFrequency;
     g_axis.accel.l = (g_axis.speed.l - lastSpeed) * g_ctrl.loopFrequency;
 
@@ -470,7 +487,10 @@ void process_loop( )
     lastSpeed = g_axis.speed.l;
 
     if(g_mode != CLOSE_LOOP)
+    {
+        errorSum = 0.0;
         return;
+    }
 
     // Compute the actual position error.
     const double posError = g_ctrl.currentTargetPos - g_axis.pos.l;
@@ -484,7 +504,8 @@ void process_loop( )
 
     errorSum += posError;
 
-    double cmd = posError * g_pid.kp.value + errorSum * g_pid.ki.value;
+    double cmd = posError * g_pid.kp.value / (double)g_ctrl.loopFrequency
+            + errorSum * g_pid.ki.value / (double)g_ctrl.loopFrequency;
 
     // Offset for the PWM (0 -> 1480)
     cmd += HALF_PWM_MAX;
@@ -664,6 +685,7 @@ unsigned char process_SPI_positionWrite( )
     g_axis.pos.c[3] = g_spi.rx[5];
 
     g_encoderU16 = g_axis.pos.l - ReadQEI();
+    g_ctrl.currentTargetPos = g_axis.pos.l;
     return ALL_OK;
 }
 
@@ -712,7 +734,7 @@ void __attribute__( (interrupt,no_auto_psv) ) _T1Interrupt( void )
 {
     WriteTimer1(0);
     _T1IF = 0;
-    
+
     process_loop();
 }
 
@@ -723,7 +745,7 @@ void __attribute__( (interrupt,no_auto_psv) ) _T2Interrupt( void )
 {
     WriteTimer2(0);
     _T2IF = 0;
-    
+
     g_led.timer++;
     g_current.timer++;
     g_wd.timer++;
