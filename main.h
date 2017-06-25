@@ -20,7 +20,7 @@
 
 // Timer parameters ----------------------------------------------------------//
 #define T1_FREQ     10000   // 10kHz
-#define PR_T1       2938//29500    // 10kHz
+#define PR_T1       2938    // 10kHz
 
 #define T2_FREQ     10000   // 10kHz
 #define PR_T2       2938    // 10kHz
@@ -80,6 +80,10 @@ unsigned char process_SPI_PID_write();
 unsigned char process_SPI_positionWrite();
 unsigned char process_SPI_positionLafErrorRead();
 unsigned char process_SPI_positionLafErrorWrite();
+unsigned char process_SPI_loopFrequencyRead();
+unsigned char process_SPI_loopFrequencyWrite();
+unsigned char process_SPI_busFrequencyRead();
+unsigned char process_SPI_busFrequencyWrite();
 
 // Interrupt functions -------------------------------------------------------//
 void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void);

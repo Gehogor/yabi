@@ -21,17 +21,21 @@
 #define IV_TACHY    0
 
 // Communication parameters --------------------------------------------------//
-#define SPI_START               0x5E
-#define SPI_END                 0xE5
-#define SPI_TARGET              0x01
-#define SPI_MODE_READ           0x02
-#define SPI_MODE_WRITE          0x03
-#define SPI_PID_READ            0x04
-#define SPI_PID_WRITE           0x05
-#define SPI_POSITION_WRITE      0x06
-#define SPI_POS_LAG_ERROR_READ  0x07
-#define SPI_POS_LAG_ERROR_WRITE 0x08
-#define SPI_MAX_SIZE            19
+#define SPI_START                   0x5E
+#define SPI_END                     0xE5
+#define SPI_TARGET                  0x01
+#define SPI_MODE_READ               0x02
+#define SPI_MODE_WRITE              0x03
+#define SPI_PID_READ                0x04
+#define SPI_PID_WRITE               0x05
+#define SPI_POSITION_WRITE          0x06
+#define SPI_POS_LAG_ERROR_READ      0x07
+#define SPI_POS_LAG_ERROR_WRITE     0x08
+#define SPI_LOOP_FREQUENCY_READ     0x09
+#define SPI_LOOP_FREQUENCY_WRITE    0x0A
+#define SPI_BUS_FREQUENCY_READ      0x0B
+#define SPI_BUS_FREQUENCY_WRITE     0x0C
+#define SPI_MAX_SIZE                19
 
 // Errors management ---------------------------------------------------------//
 #define ALL_OK          0x00
@@ -73,8 +77,8 @@ typedef struct {
 /* Close loop interpolation management ---------------------------------------*/
 typedef struct {
     unsigned long timer;
-    volatile long loopFrequency;
-    volatile long busFrequency;
+    volatile union U16_U8 loopFrequency;
+    volatile union U16_U8 busFrequency;
     volatile long stepPos;
     volatile long currentTargetPos;
 } Interpolation;

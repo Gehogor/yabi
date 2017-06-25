@@ -72,8 +72,8 @@ Com_SPI g_spi = {.index = 0};
 
 Interpolation g_ctrl = {
     .timer = 0,
-    .loopFrequency = 2000,
-    .busFrequency = 200,
+    .loopFrequency.i = 2000,
+    .busFrequency.i = 200,
     .stepPos = 0,
     .currentTargetPos = 0
 };
@@ -441,6 +441,22 @@ unsigned char process_SPI( )
             return process_SPI_positionLafErrorWrite();
             break;
 
+        case SPI_LOOP_FREQUENCY_READ:
+            return process_SPI_loopFrequencyRead();
+            break;
+
+        case SPI_LOOP_FREQUENCY_WRITE:
+            return process_SPI_loopFrequencyWrite();
+            break;
+
+        case SPI_BUS_FREQUENCY_READ:
+            return process_SPI_busFrequencyRead();
+            break;
+
+        case SPI_BUS_FREQUENCY_WRITE:
+            return process_SPI_busFrequencyWrite();
+            break;
+
         default:
             return SPI_UNCKNOW;
             break;
@@ -456,7 +472,7 @@ void process_loop( )
     static double errorSum = 0.0;
 
     // Manage the time to have a cyclic time configurable.
-    if(g_ctrl.timer < T1_FREQ / g_ctrl.loopFrequency)
+    if(g_ctrl.timer < T1_FREQ / g_ctrl.loopFrequency.i)
     {
         g_ctrl.timer++;
         return;
@@ -474,8 +490,8 @@ void process_loop( )
         // Compute the exact position according to 16 bit overflow from QEI module.
         g_axis.pos.l = g_encoderU16 + ReadQEI();
 
-    g_axis.speed.l = (g_axis.pos.l - lastPosition) * g_ctrl.loopFrequency;
-    g_axis.accel.l = (g_axis.speed.l - lastSpeed) * g_ctrl.loopFrequency;
+    g_axis.speed.l = (g_axis.pos.l - lastPosition) * g_ctrl.loopFrequency.i;
+    g_axis.accel.l = (g_axis.speed.l - lastSpeed) * g_ctrl.loopFrequency.i;
 
     lastPosition = g_axis.pos.l;
     lastSpeed = g_axis.speed.l;
@@ -498,8 +514,8 @@ void process_loop( )
 
     errorSum += posError;
 
-    double cmd = posError * g_pid.kp.value / (double)g_ctrl.loopFrequency
-            + errorSum * g_pid.ki.value / (double)g_ctrl.loopFrequency;
+    double cmd = posError * g_pid.kp.value / (double)g_ctrl.loopFrequency.i
+            + errorSum * g_pid.ki.value / (double)g_ctrl.loopFrequency.i;
 
     // Offset for the PWM (0 -> 1480)
     cmd += HALF_PWM_MAX;
@@ -558,7 +574,7 @@ unsigned char process_SPI_target( )
     g_spi.tx[17] = SPI_END;
 
     // Reset index for the new interpolation.
-    const long count = g_ctrl.loopFrequency / g_ctrl.busFrequency;
+    const long count = g_ctrl.loopFrequency.i / g_ctrl.busFrequency.i;
     g_ctrl.stepPos = (g_axis.targetPos.l - g_ctrl.currentTargetPos) / count;
 
     return ALL_OK;
@@ -717,6 +733,74 @@ unsigned char process_SPI_positionLafErrorWrite( )
     g_axis.posLagErrorMax.c[1] = g_spi.rx[3];
     g_axis.posLagErrorMax.c[2] = g_spi.rx[4];
     g_axis.posLagErrorMax.c[3] = g_spi.rx[5];
+
+    return ALL_OK;
+}
+
+unsigned char process_SPI_loopFrequencyRead( )
+{
+    if(g_spi.rx[2] != SPI_END || g_spi.rx[SPI_MAX_SIZE - 1] != SPI_END)
+        return SPI_DATA_ERROR;
+
+    // Set the current PID values to SPI buffer.
+    g_spi.tx[0] = SPI_START;
+    g_spi.tx[1] = SPI_LOOP_FREQUENCY_READ;
+
+    g_spi.tx[2] = g_ctrl.loopFrequency.c[0];
+    g_spi.tx[3] = g_ctrl.loopFrequency.c[1];
+
+    g_spi.tx[4] = SPI_END;
+
+    return ALL_OK;
+}
+
+unsigned char process_SPI_loopFrequencyWrite( )
+{
+    if(g_spi.rx[4] != SPI_END || g_spi.rx[SPI_MAX_SIZE - 1] != SPI_END)
+        return SPI_DATA_ERROR;
+
+    // Set the buffer for response to SPI.
+    g_spi.tx[0] = SPI_START;
+    g_spi.tx[1] = SPI_LOOP_FREQUENCY_WRITE;
+    g_spi.tx[2] = SPI_END;
+
+    // Get new value kp of PID from SPI.
+    g_ctrl.loopFrequency.c[0] = g_spi.rx[2];
+    g_ctrl.loopFrequency.c[1] = g_spi.rx[3];
+
+    return ALL_OK;
+}
+
+unsigned char process_SPI_busFrequencyRead( )
+{
+    if(g_spi.rx[2] != SPI_END || g_spi.rx[SPI_MAX_SIZE - 1] != SPI_END)
+        return SPI_DATA_ERROR;
+
+    // Set the current PID values to SPI buffer.
+    g_spi.tx[0] = SPI_START;
+    g_spi.tx[1] = SPI_BUS_FREQUENCY_READ;
+
+    g_spi.tx[2] = g_ctrl.busFrequency.c[0];
+    g_spi.tx[3] = g_ctrl.busFrequency.c[1];
+
+    g_spi.tx[4] = SPI_END;
+
+    return ALL_OK;
+}
+
+unsigned char process_SPI_busFrequencyWrite( )
+{
+    if(g_spi.rx[4] != SPI_END || g_spi.rx[SPI_MAX_SIZE - 1] != SPI_END)
+        return SPI_DATA_ERROR;
+
+    // Set the buffer for response to SPI.
+    g_spi.tx[0] = SPI_START;
+    g_spi.tx[1] = SPI_BUS_FREQUENCY_WRITE;
+    g_spi.tx[2] = SPI_END;
+
+    // Get new value kp of PID from SPI.
+    g_ctrl.busFrequency.c[0] = g_spi.rx[2];
+    g_ctrl.busFrequency.c[1] = g_spi.rx[3];
 
     return ALL_OK;
 }
