@@ -34,7 +34,7 @@
 #define SPI_MAX_SIZE            19
 
 // Errors management ---------------------------------------------------------//
-#define SUCCESS         0x00
+#define ALL_OK          0x00
 #define SPI_DATA_ERROR  0xF0
 #define SPI_UNCKNOW     0xF1
 #define POS_LAG_ERROR   0xF2
@@ -70,19 +70,55 @@ typedef struct {
     unsigned char tx[SPI_MAX_SIZE];
 } Com_SPI;
 
-/* Position interpolation ----------------------------------------------------*/
+/* Close loop interpolation management ---------------------------------------*/
 typedef struct {
-    volatile unsigned long timer;
-    long loopFrequency;
-    long busFrequency;
-    long stepPos;
+    unsigned long timer;
+    volatile long loopFrequency;
+    volatile long busFrequency;
+    volatile long stepPos;
+    volatile long currentTargetPos;
 } Interpolation;
 
-// Watchdog managmement ------------------------------------------------------//
-typedef struct
-{
+/* Axis managmement ----------------------------------------------------------*/
+typedef struct {
+    volatile union S32_U8 pos;
+    volatile union S32_U8 speed;
+    volatile union S32_U8 accel;
+    union S32_U8 targetPos;
+    union S32_U8 targetSpeed;
+    volatile union S32_U8 posLagErrorMax;
+} Axis;
+
+/* Watchdog managmement ------------------------------------------------------*/
+typedef struct {
     volatile unsigned long timer;
     union U16_U8 frequency;
 } Watchdog;
+
+/* PID managmement -----------------------------------------------------------*/
+typedef struct {
+    volatile D32 kp;
+    volatile D32 ki;
+    volatile D32 kd;
+} PID;
+
+/* Current management --------------------------------------------------------*/
+typedef struct {
+    union U16_U8 value;
+    union U16_U8 frequency;
+    unsigned char count;
+
+    volatile unsigned long timer;
+    unsigned char state;
+    unsigned long measure;
+    unsigned long average;
+} Current;
+
+/* Led managmement -----------------------------------------------------------*/
+typedef struct {
+    volatile unsigned long timer;
+    unsigned long frequency_A;
+    unsigned long frequency_B;
+} Led;
 
 #endif	/* _YAXITYPE_H_ */
