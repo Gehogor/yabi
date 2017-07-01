@@ -62,6 +62,11 @@ union U16_U8 {
     unsigned int i;
 };
 
+union S16_U8 {
+    unsigned char c[2];
+    int i;
+};
+
 typedef struct {
     union S32_U8 bus;
     double value;
@@ -91,6 +96,7 @@ typedef struct {
     union S32_U8 targetPos;
     union S32_U8 targetSpeed;
     volatile union S32_U8 posLagErrorMax;
+    volatile char direction;
 } Axis;
 
 /* Watchdog managmement ------------------------------------------------------*/
@@ -108,14 +114,14 @@ typedef struct {
 
 /* Current management --------------------------------------------------------*/
 typedef struct {
-    union U16_U8 value;
+    volatile union S16_U8 value;
     union U16_U8 frequency;
     unsigned char count;
 
     volatile unsigned long timer;
     unsigned char state;
-    unsigned long measure;
-    unsigned long average;
+    long measure;
+    long average;
 } Current;
 
 /* Led managmement -----------------------------------------------------------*/

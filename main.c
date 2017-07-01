@@ -60,7 +60,7 @@ Led g_led = {.timer = 0,.frequency_A = 10,.frequency_B = 10};
 
 Current g_current = {
     .value.i = 0,
-    .frequency.i = 500,
+    .frequency.i = 1000,
     .count = 5,
     .timer = 0,
     .state = 0,
@@ -100,7 +100,7 @@ int main( )
     while(1)
     {
         process_LED();
-        //process_current();
+        process_current();
 
         // SPI buffer management, if SPI error is occured we select the safe mode.
         spiState = process_SPI();
@@ -225,6 +225,7 @@ void initPWM( )
 
 void initADC( )
 {
+    ADCON1bits.ADON = 0;
     SetChanADC10(ADC_CH0_POS_SAMPLEA_AN0 & ADC_CH0_NEG_SAMPLEA_NVREF);
     ConfigIntADC10(ADC_INT_DISABLE);
     OpenADC10(ADC_MODULE_ON
@@ -311,25 +312,21 @@ void process_current( )
 {
     if(g_current.state == 0 && g_current.timer >= (T2_FREQ / g_current.frequency.i))
     {
-        // Select the requested channel.
-        SetChanADC10(ADC_CSOUT);
-
-        // Start sampling.
         ADCON1bits.SAMP = 1;
-
         g_current.state = 1;
-        g_current.timer = 0;
     }
-    else if(g_current.state == 1 && !ADCON1bits.SAMP)
+    else if(g_current.state == 1 && ADCON1bits.SAMP)
     {
-        // Start Converting.
         ConvertADC10();
-
         g_current.state = 2;
     }
     else if(g_current.state == 2 && ADCON1bits.DONE == 1)
     {
-        g_current.average += ReadADC10(0);
+        if(g_axis.direction == 1)
+            g_current.average += ReadADC10(0);
+        else
+            g_current.average -= ReadADC10(0);
+        
         g_current.measure++;
         g_current.state = 0;
     }
@@ -340,6 +337,7 @@ void process_current( )
 
         g_current.measure = 0;
         g_current.average = 0;
+        g_current.timer = 0;
     }
 }
 
@@ -517,6 +515,11 @@ void process_loop( )
     double cmd = posError * g_pid.kp.value / (double)g_ctrl.loopFrequency.i
             + errorSum * g_pid.ki.value / (double)g_ctrl.loopFrequency.i;
 
+    if( cmd >= 0 )
+        g_axis.direction = 1;
+    else
+        g_axis.direction = -1;
+    
     // Offset for the PWM (0 -> 1480)
     cmd += HALF_PWM_MAX;
 

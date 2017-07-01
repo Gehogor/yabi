@@ -50,9 +50,6 @@
 #define SDI_SDO         _RF3
 #define SDI_SS          _RB2
 
-#define ADC_CSOUT       (ADC_CH0_POS_SAMPLEA_AN0 & ADC_CH0_NEG_SAMPLEA_NVREF)
-#define ADC_REF         (ADC_CH0_POS_SAMPLEA_AN1 & ADC_CH0_NEG_SAMPLEA_NVREF)
-
 // Led managmement -----------------------------------------------------------//
 #define LED             _LATE5
 
