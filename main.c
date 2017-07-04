@@ -326,7 +326,7 @@ void process_current( )
             g_current.average += ReadADC10(0);
         else
             g_current.average -= ReadADC10(0);
-        
+
         g_current.measure++;
         g_current.state = 0;
     }
@@ -515,11 +515,11 @@ void process_loop( )
     double cmd = posError * g_pid.kp.value / (double)g_ctrl.loopFrequency.i
             + errorSum * g_pid.ki.value / (double)g_ctrl.loopFrequency.i;
 
-    if( cmd >= 0 )
+    if(cmd >= 0)
         g_axis.direction = 1;
     else
         g_axis.direction = -1;
-    
+
     // Offset for the PWM (0 -> 1480)
     cmd += HALF_PWM_MAX;
 
@@ -837,6 +837,7 @@ void __attribute__( (interrupt,no_auto_psv) ) _T2Interrupt( void )
  */
 void __attribute__( (interrupt,no_auto_psv) ) _SPI1Interrupt( void )
 {
+    static unsigned char reset = 0;
     _SPI1IF = 0;
 
     // Error, overflow.
@@ -853,12 +854,23 @@ void __attribute__( (interrupt,no_auto_psv) ) _SPI1Interrupt( void )
     }
     else
     {
+        // We get the data from the SPI buffer.
+        const unsigned char buffer = SPI1BUF;
+        
         // If SPI bytes are receided, we restart watchdog.
         g_wd.timer = 0;
 
-        if(g_spi.index < SPI_MAX_SIZE)
+        if(buffer == SPI_RESET)
+            reset++;
+
+        if(reset >= SPI_MAX_SIZE)
         {
-            g_spi.rx[g_spi.index] = SPI1BUF;
+            g_spi.index = 0;
+            reset = 0;
+        }
+        else if(g_spi.index < SPI_MAX_SIZE)
+        {
+            g_spi.rx[g_spi.index] = buffer;
             while(SPI1STATbits.SPITBF);
             SPI1BUF = g_spi.tx[g_spi.index];
 
