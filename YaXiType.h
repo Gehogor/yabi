@@ -23,7 +23,6 @@
 // Communication parameters --------------------------------------------------//
 #define SPI_START                   0x5E
 #define SPI_END                     0xE5
-#define SPI_RESET                   0x00
 #define SPI_TARGET                  0x01
 #define SPI_MODE_READ               0x02
 #define SPI_MODE_WRITE              0x03
