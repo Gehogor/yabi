@@ -395,6 +395,10 @@ void process_mode( )
 
 unsigned char process_SPI( )
 {
+    // Reset the index of SPI buffer.
+    if(SDI_SS == 1 && g_spi.index != SPI_MAX_SIZE)
+        g_spi.index = 0;
+
     // No SPI buffer treatment if it is not full.
     if(g_spi.index != SPI_MAX_SIZE)
         return ALL_OK;
