@@ -41,9 +41,9 @@
 #define DRIVER_FF2      _RC14
 #define DRIVER_ALIMP	_RE4
 
-#define ENCODER_PA       _RB4
-#define ENCODER_PB       _RB5
-#define ENCODER_PZ       _RB3
+#define ENCODER_PA      _RB4
+#define ENCODER_PB      _RB5
+#define ENCODER_PZ      _RB3
 
 #define SDI_SCK         _RE8
 #define SDI_SDI         _RF2

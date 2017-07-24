@@ -326,7 +326,7 @@ void process_current( )
             g_current.average += ReadADC10(0);
         else
             g_current.average -= ReadADC10(0);
-        
+
         g_current.measure++;
         g_current.state = 0;
     }
@@ -515,11 +515,11 @@ void process_loop( )
     double cmd = posError * g_pid.kp.value / (double)g_ctrl.loopFrequency.i
             + errorSum * g_pid.ki.value / (double)g_ctrl.loopFrequency.i;
 
-    if( cmd >= 0 )
+    if(cmd >= 0)
         g_axis.direction = 1;
     else
         g_axis.direction = -1;
-    
+
     // Offset for the PWM (0 -> 1480)
     cmd += HALF_PWM_MAX;
 
